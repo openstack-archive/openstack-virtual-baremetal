@@ -22,7 +22,7 @@ import yaml
 from heatclient.common import template_utils
 import os_client_config
 
-import auth
+from openstack_virtual_baremetal import auth
 
 
 def _parse_args():
