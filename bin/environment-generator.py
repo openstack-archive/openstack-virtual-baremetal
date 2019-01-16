@@ -77,7 +77,7 @@ def _create_output_dir(target_file):
             raise
 
 
-def _generate_environment(input_env, parent_env=None):
+def _generate_environment(input_env, output_path, parent_env=None):
     if parent_env is None:
         parent_env = {}
     env = dict(parent_env)
@@ -167,7 +167,7 @@ def _generate_environment(input_env, parent_env=None):
                   }
         f.write(_PARAM_FORMAT % values + '\n')
 
-    target_file = os.path.join('environments', env['name'] + '.yaml')
+    target_file = os.path.join(output_path, env['name'] + '.yaml')
     _create_output_dir(target_file)
     with open(target_file, 'w') as env_file:
         env_file.write(_FILE_HEADER)
@@ -202,10 +202,10 @@ def _generate_environment(input_env, parent_env=None):
         print('Wrote sample environment "%s"' % target_file)
 
     for e in env.get('children', []):
-        _generate_environment(e, env)
+        _generate_environment(e, output_path, env)
 
 
-def generate_environments(config_path):
+def generate_environments(config_path, output_path):
     if os.path.isdir(config_path):
         config_files = os.listdir(config_path)
         config_files = [os.path.join(config_path, i) for i in config_files
@@ -217,7 +217,7 @@ def generate_environments(config_path):
         with open(config_file) as f:
             config = yaml.safe_load(f)
         for env in config['environments']:
-            _generate_environment(env)
+            _generate_environment(env, output_path)
 
 
 def generate_index(index_path):
@@ -237,6 +237,8 @@ def _parse_args():
     parser.add_argument('config_path',
                         help='Filename or directory containing the sample '
                              'environment definitions.')
+    parser.add_argument('output_path',
+                        help='Location to write generated files.')
     parser.add_argument('--index',
                         help='Specify the output path for an index file '
                              'listing all the generated environments. '
@@ -247,7 +249,7 @@ def _parse_args():
 
 def main():
     args = _parse_args()
-    generate_environments(args.config_path)
+    generate_environments(args.config_path, args.output_path)
     if args.index:
         generate_index(args.index)
 
