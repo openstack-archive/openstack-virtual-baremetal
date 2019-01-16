@@ -35,7 +35,7 @@ echo 'git-tripleo-ci/scripts/tripleo.sh $@' >> tripleo.sh
 chmod +x tripleo.sh
 if [ ! -d overcloud-templates ]
 then
-    git clone https://github.com/cybertron/openstack-virtual-baremetal
+    git clone https://git.openstack.org/openstack/openstack-virtual-baremetal
     cp -r openstack-virtual-baremetal/overcloud-templates .
 fi
 

@@ -47,8 +47,8 @@ master_doc = 'index'
 # General information about the project.
 project = u'OpenStack Virtual Baremetal'
 copyright = u'2015, Red Hat Inc.'
-bug_tracker = u'Github'
-bug_tracker_url = u'https://github.com/cybertron/openstack-virtual-baremetal'
+bug_tracker = u'Launchpad'
+bug_tracker_url = u'https://bugs.launchpad.net/tripleo/'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
