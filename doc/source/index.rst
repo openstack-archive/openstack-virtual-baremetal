@@ -17,11 +17,6 @@ Table of Contents
    troubleshooting
    api
 
-Search
-------
-
-* :ref:`search`
-
 Index
 -----
 * :ref:`genindex`

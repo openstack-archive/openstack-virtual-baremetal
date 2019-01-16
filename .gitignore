@@ -12,3 +12,4 @@ cover
 doc/build
 AUTHORS
 ChangeLog
+.stestr/

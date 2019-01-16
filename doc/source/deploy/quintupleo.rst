@@ -79,8 +79,8 @@ however.
              that lists which BMC address corresponds to a given baremetal
              instance.
 
-Deleting an OVB Environment
----------------------------
+Deleting a QuintupleO Environment
+---------------------------------
 
 All of the OpenStack resources created by OVB are part of the Heat stack, so
 to delete the environment just delete the Heat stack.  There are a few local
