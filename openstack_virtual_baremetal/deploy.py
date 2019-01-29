@@ -22,7 +22,11 @@ import yaml
 from heatclient.common import template_utils
 import os_client_config
 
-from openstack_virtual_baremetal import auth
+# TODO(sshnaidm): To make this python3 friendly with relative imports
+try:
+    from openstack_virtual_baremetal import auth
+except ImportError:
+    import auth
 
 
 def _parse_args():
