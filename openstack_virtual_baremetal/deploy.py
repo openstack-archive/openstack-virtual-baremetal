@@ -377,7 +377,7 @@ def _deploy_roles(stack_name, args, env_paths):
                 [role_env], poll=True)
 
 
-if __name__ == '__main__':
+def main():
     args = _parse_args()
     stack_name, stack_template = _process_args(args)
     env_paths = args.env
@@ -389,3 +389,7 @@ if __name__ == '__main__':
         poll = True
     _deploy(stack_name, stack_template, env_paths, poll=poll)
     _deploy_roles(stack_name, args, env_paths)
+
+
+if __name__ == '__main__':
+    main()
