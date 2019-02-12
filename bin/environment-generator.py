@@ -238,7 +238,9 @@ def _parse_args():
                         help='Filename or directory containing the sample '
                              'environment definitions.')
     parser.add_argument('output_path',
-                        help='Location to write generated files.')
+                        help='Location to write generated files.',
+                        default='environments',
+                        nargs='?')
     parser.add_argument('--index',
                         help='Specify the output path for an index file '
                              'listing all the generated environments. '
