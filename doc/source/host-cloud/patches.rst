@@ -1,6 +1,11 @@
 Patching the Host Cloud
 =======================
 
+.. note: Patching the host cloud is now optional. On clouds where the Neutron
+         port-security extension is enabled, it is now possible to run without
+         patching. However, the PXE boot patch may provide a better user
+         experience with OVB, so patching may still be desirable.
+
 The changes described in this section apply to compute nodes in the
 host cloud.
 
