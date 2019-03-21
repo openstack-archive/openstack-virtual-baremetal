@@ -1,0 +1,10 @@
+heat_template_version: newton
+
+parameters:
+  cloud_data:
+    type: string
+    hidden: true
+
+resources:
+  bmc:
+    type: OS::Heat::None

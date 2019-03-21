@@ -185,7 +185,7 @@ environments:
       the host cloud, but at the cost of potential inconsistency if the state
       of a baremetal instance is changed without using the BMC.
     files:
-      templates/virtual-baremetal.yaml:
+      templates/bmc.yaml:
         parameters:
           - bmc_use_cache
     sample_values:
@@ -254,4 +254,13 @@ environments:
       traffic through the undercloud.
     resource_registry:
       OS::OVB::UndercloudNetworks: ../templates/undercloud-networks-public-router.yaml
+  -
+    name: disable-bmc
+    title: Disable BMC
+    description: |
+      Deploy a stack without a BMC. This will obviously make it impossible to
+      control the instances via IPMI. It will also prevent use of
+      ovb-build-nodes-json because there will be no BMC addresses.
+    resource_registry:
+      OS::OVB::BMC: ../templates/bmc-none.yaml
 
