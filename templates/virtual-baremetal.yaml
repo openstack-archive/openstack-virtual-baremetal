@@ -1,4 +1,4 @@
-heat_template_version: 2014-10-16
+heat_template_version: newton
 
 description: Template for deploying OpenStack BMC nodes.  Can be wrapped in a ResourceGroup for scaling.
 
@@ -64,6 +64,14 @@ parameters:
     type: string
     default: baremetal
     description: Prefix for the name of the baremetal instances
+
+  baremetal_name_template:
+    type: string
+    default: ''
+    description: |
+      Override the default naming scheme for baremetal instances.
+      The value should usually include '%index%' to differentiate multiple
+      instances. For example: 'my-custom-name-%index%'
 
   os_user:
     type: string
@@ -142,6 +150,14 @@ parameters:
     type: string
     default: ''
 
+
+conditions:
+  baremetal_name_override:
+    not:
+      equals:
+      - {get_param: baremetal_name_template}
+      - ''
+
 resources:
   bmc_port:
     type: OS::OVB::BMCPort
@@ -216,6 +232,14 @@ resources:
         properties:
           baremetal_flavor: {get_param: baremetal_flavor}
           baremetal_image: {get_param: baremetal_image}
+          baremetal_name:
+            if:
+            - baremetal_name_override
+            - {get_param: baremetal_name_template}
+            - list_join:
+              - ''
+              - - {get_param: baremetal_prefix}
+                - '_%index%'
           key_name: {get_param: key_name}
           networks: {get_param: networks}
           suffix: _%index%
