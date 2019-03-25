@@ -2,3 +2,12 @@
     templates:
       - openstack-python-jobs
       - openstack-python36-jobs
+      - docs-on-readthedocs
+    vars:
+      rtd_webhook_id: '64851'
+    check:
+      jobs:
+        - openstack-tox-docs
+    gate:
+      jobs:
+        - openstack-tox-docs
