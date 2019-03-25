@@ -8,6 +8,9 @@ parameters:
   baremetal_image:
     type: string
 
+  baremetal_name:
+    type: string
+
   key_name:
     type: string
 
@@ -37,11 +40,7 @@ resources:
       config_drive: false
       key_name: {get_param: key_name}
       networks: {get_attr: [baremetal_ports, ports]}
-      name:
-        list_join:
-        - ''
-        - - {get_param: baremetal_prefix}
-          - {get_param: suffix}
+      name: {get_param: baremetal_name}
 
 outputs:
   bmc_nic:
