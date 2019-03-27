@@ -105,6 +105,16 @@ Create a Private Network
 existing one.
 
 
+Disable BMC
+-----------
+
+**File:** environments/disable-bmc.yaml
+
+**Description:** Deploy a stack without a BMC. This will obviously make it impossible to
+control the instances via IPMI. It will also prevent use of
+ovb-build-nodes-json because there will be no BMC addresses.
+
+
 Public Network External Router
 ------------------------------
 

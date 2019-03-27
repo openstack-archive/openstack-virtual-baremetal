@@ -6,6 +6,7 @@ resource_registry:
   OS::OVB::PrivateNetwork: private-net-existing.yaml
   OS::OVB::BaremetalNetworks: baremetal-networks-none.yaml
   OS::OVB::BaremetalPorts: baremetal-ports-default.yaml
+  OS::OVB::BMC: bmc.yaml
   OS::OVB::BMCPort: bmc-port.yaml
   OS::OVB::UndercloudPorts: undercloud-ports.yaml
   OS::OVB::UndercloudNetworks: undercloud-networks.yaml

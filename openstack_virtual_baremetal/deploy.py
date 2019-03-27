@@ -219,6 +219,8 @@ def _deploy(stack_name, stack_template, env_paths, poll):
     all_files = {}
     all_files.update(template_files)
     all_files.update(env_files)
+    # NOTE(bnemec): Unfortunately, we can't pass this in as parameter_default
+    # because the Heat API doesn't accept parameter_defaults.
     parameters = {'cloud_data': auth._cloud_json()}
 
     hclient.stacks.create(stack_name=stack_name,
@@ -303,7 +305,7 @@ def _process_role(role_file, base_envs, stack_name, args):
                               'overcloud_tenant_net',
                               ]
     allowed_registry_keys = ['OS::OVB::BaremetalPorts', 'OS::OVB::BMCPort',
-                             'OS::OVB::UndercloudNetworks',
+                             'OS::OVB::UndercloudNetworks', 'OS::OVB::BMC',
                              ]
     # NOTE(bnemec): Not sure what purpose this serves. Can probably be removed.
     role_env = role_data
