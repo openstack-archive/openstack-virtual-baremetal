@@ -11,6 +11,11 @@ parameters:
     description: CIDR for provision network subnet
     default: 192.168.24.0/24
 
+  provision_net_ip_version:
+    type: number
+    description: IP version for the provision_net subnet
+    default: 4
+
   provision_net_shared:
     type: boolean
     description: Whether this network should be shared across all tenants
@@ -30,6 +35,11 @@ parameters:
     type: string
     description: Router address for the public network subnet
     default: 10.0.0.254
+
+  public_net_ip_version:
+    type: number
+    description: IP version for the public subnet
+    default: 4
 
   public_net_shared:
     type: boolean
@@ -70,6 +80,7 @@ resources:
       cidr: {get_param: public_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: public_net_ip_version}
 
   public_router:
     type: OS::Neutron::Router

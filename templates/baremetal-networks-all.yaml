@@ -16,6 +16,11 @@ parameters:
       does not need to be changed.
     default: 172.17.0.0/24
 
+  overcloud_internal_net_ip_version:
+    type: number
+    description: IP version for the overcloud_internal_net subnet
+    default: 4
+
   overcloud_storage_net:
     type: string
     description: Name of storage network
@@ -27,6 +32,11 @@ parameters:
       CIDR for storage network subnet.  This is typically irrelevant and
       does not need to be changed.
     default: 172.18.0.0/24
+
+  overcloud_storage_net_ip_version:
+    type: number
+    description: IP version for the overcloud_storage_net subnet
+    default: 4
 
   overcloud_storage_mgmt_net:
     type: string
@@ -40,6 +50,11 @@ parameters:
       and does not need to be changed.
     default: 172.19.0.0/24
 
+  overcloud_storage_mgmt_net_ip_version:
+    type: number
+    description: IP version for the overcloud_storage_mgmt_net subnet
+    default: 4
+
   overcloud_tenant_net:
     type: string
     description: Name of tenant network
@@ -51,6 +66,11 @@ parameters:
       CIDR for tenant network subnet.  This is typically irrelevant and
       does not need to be changed.
     default: 172.16.0.0/24
+
+  overcloud_tenant_net_ip_version:
+    type: number
+    description: IP version for the overcloud_tenant_net subnet
+    default: 4
 
 resources:
 
@@ -67,6 +87,7 @@ resources:
       cidr: {get_param: overcloud_internal_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: overcloud_internal_net_ip_version}
 
   storage_network:
     type: OS::Neutron::Net
@@ -81,6 +102,7 @@ resources:
       cidr: {get_param: overcloud_storage_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: overcloud_storage_net_ip_version}
 
   storage_mgmt_network:
     type: OS::Neutron::Net
@@ -95,6 +117,7 @@ resources:
       cidr: {get_param: overcloud_storage_mgmt_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: overcloud_storage_mgmt_net_ip_version}
 
   tenant_network:
     type: OS::Neutron::Net
@@ -109,6 +132,7 @@ resources:
       cidr: {get_param: overcloud_tenant_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: overcloud_tenant_net_ip_version}
 
 outputs:
   networks:

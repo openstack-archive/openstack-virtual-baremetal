@@ -16,6 +16,11 @@ parameters:
     description: Router address for the provision network subnet
     default: 192.168.24.254
 
+  provision_net_ip_version:
+    type: number
+    description: IP version for the provision_net subnet
+    default: 4
+
   provision_net_shared:
     type: boolean
     description: Whether this network should be shared across all tenants
@@ -35,6 +40,11 @@ parameters:
     type: string
     description: Router address for the provision network subnet
     default: 192.168.25.254
+
+  provision_net2_ip_version:
+    type: number
+    description: IP version for the provision_net2 subnet
+    default: 4
 
   provision_net2_shared:
     type: boolean
@@ -56,6 +66,11 @@ parameters:
     description: Router address for the provision network subnet
     default: 192.168.26.254
 
+  provision_net3_ip_version:
+    type: number
+    description: IP version for the provision_net3 subnet
+    default: 4
+
   provision_net3_shared:
     type: boolean
     description: Whether this network should be shared across all tenants
@@ -75,6 +90,11 @@ parameters:
     type: string
     description: Router address for the public network subnet
     default: 10.0.0.254
+
+  public_net_ip_version:
+    type: number
+    description: IP version for the public subnet
+    default: 4
 
   public_net_shared:
     type: boolean
@@ -107,6 +127,7 @@ resources:
       cidr: {get_param: provision_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: provision_net_ip_version}
 
   provision_router_port:
     type: OS::Neutron::Port
@@ -136,6 +157,7 @@ resources:
       cidr: {get_param: provision_net2_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: provision_net2_ip_version}
 
   provision_router_port2:
     type: OS::Neutron::Port
@@ -165,6 +187,7 @@ resources:
       cidr: {get_param: provision_net3_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: provision_net3_ip_version}
 
   provision_router_port3:
     type: OS::Neutron::Port
@@ -194,6 +217,7 @@ resources:
       cidr: {get_param: public_net_cidr}
       gateway_ip: null
       enable_dhcp: false
+      ip_version: {get_param: public_net_ip_version}
 
   public_router:
     type: OS::Neutron::Router

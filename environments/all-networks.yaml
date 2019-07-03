@@ -18,6 +18,10 @@ parameter_defaults:
   # Type: string
   overcloud_internal_net_cidr: 172.17.0.0/24
 
+  # IP version for the overcloud_internal_net subnet
+  # Type: number
+  overcloud_internal_net_ip_version: 4
+
   # Name of storage management network
   # Type: string
   overcloud_storage_mgmt_net: overcloud_storage_mgmt
@@ -26,6 +30,10 @@ parameter_defaults:
   # and does not need to be changed.
   # Type: string
   overcloud_storage_mgmt_net_cidr: 172.19.0.0/24
+
+  # IP version for the overcloud_storage_mgmt_net subnet
+  # Type: number
+  overcloud_storage_mgmt_net_ip_version: 4
 
   # Name of storage network
   # Type: string
@@ -36,6 +44,10 @@ parameter_defaults:
   # Type: string
   overcloud_storage_net_cidr: 172.18.0.0/24
 
+  # IP version for the overcloud_storage_net subnet
+  # Type: number
+  overcloud_storage_net_ip_version: 4
+
   # Name of tenant network
   # Type: string
   overcloud_tenant_net: overcloud_tenant
@@ -44,6 +56,10 @@ parameter_defaults:
   # does not need to be changed.
   # Type: string
   overcloud_tenant_net_cidr: 172.16.0.0/24
+
+  # IP version for the overcloud_tenant_net subnet
+  # Type: number
+  overcloud_tenant_net_ip_version: 4
 
 resource_registry:
   OS::OVB::BaremetalNetworks: ../templates/baremetal-networks-all.yaml

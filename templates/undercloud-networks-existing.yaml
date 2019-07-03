@@ -11,6 +11,11 @@ parameters:
     description: CIDR for provision network subnet
     default: 192.0.2.0/24
 
+  provision_net_ip_version:
+    type: number
+    description: IP version for the provision_net subnet
+    default: 4
+
   provision_net_shared:
     type: boolean
     description: Whether this network should be shared across all tenants
@@ -25,6 +30,11 @@ parameters:
     type: string
     description: CIDR for external network subnet
     default: 10.0.0.0/24
+
+  public_subnet_ip_version:
+    type: number
+    description: IP version for the public subnet
+    default: 4
 
   public_net_shared:
     type: boolean
