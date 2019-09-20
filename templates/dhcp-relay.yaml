@@ -45,6 +45,9 @@ parameters:
   private_net:
     type: string
 
+  provision_network_routers_data:
+    type: json
+    description: A map with provision network router data
 
 resources:
   dhcp_relay_port_private:

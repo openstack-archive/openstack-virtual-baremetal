@@ -186,6 +186,7 @@ resources:
       baremetal_prefix: {get_param: baremetal_prefix}
       cloud_data: {get_param: cloud_data}
       dhcp_ips: {get_param: dhcp_ips}
+      provision_network_routers_data:  {get_attr: [undercloud_networks, provision_network_routers_data]}
 
 outputs:
   undercloud_host_floating_ip:

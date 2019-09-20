@@ -158,8 +158,21 @@ Configuration for Routed Networks
 **File:** environments/routed-networks-configuration.yaml
 
 **Description:** Contains the available parameters that need to be configured when using
-a routed networks environment. Requires the routed-networks.yaml
-environment.
+a routed networks environment. Requires the routed-networks.yaml or
+routed-networks-ipv6.yaml environment.
+
+
+Enable Routed Networks IPv6
+---------------------------
+
+**File:** environments/routed-networks-ipv6.yaml
+
+**Description:** Enable use of routed IPv6 networks, where there may be multiple separate
+networks connected with a router, router advertisement daemon (radvd),
+and DHCP relay. Do not pass any other network configuration environments
+after this one or they may override the changes made by this environment.
+When this environment is in use, the routed-networks-configuration
+environment should usually be included as well.
 
 
 Base Role Configuration for Routed Networks

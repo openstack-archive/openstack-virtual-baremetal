@@ -195,8 +195,8 @@ environments:
     title: Configuration for Routed Networks
     description: |
       Contains the available parameters that need to be configured when using
-      a routed networks environment. Requires the routed-networks.yaml
-      environment.
+      a routed networks environment. Requires the routed-networks.yaml or
+      routed-networks-ipv6.yaml environment.
     files:
       templates/dhcp-relay.yaml:
         parameters:
@@ -216,6 +216,22 @@ environments:
       OS::OVB::UndercloudNetworks: ../templates/undercloud-networks-routed.yaml
       OS::OVB::BaremetalNetworks: ../templates/baremetal-networks-routed.yaml
       OS::OVB::DHCPRelay: ../templates/dhcp-relay.yaml
+  -
+    name: routed-networks-ipv6
+    title: Enable Routed Networks IPv6
+    description: |
+      Enable use of routed IPv6 networks, where there may be multiple separate
+      networks connected with a router, router advertisement daemon (radvd),
+      and DHCP relay. Do not pass any other network configuration environments
+      after this one or they may override the changes made by this environment.
+      When this environment is in use, the routed-networks-configuration
+      environment should usually be included as well.
+    resource_registry:
+      OS::OVB::UndercloudNetworks: ../templates/undercloud-networks-routed.yaml
+      OS::OVB::BaremetalNetworks: ../templates/baremetal-networks-routed.yaml
+      OS::OVB::DHCPRelay: ../templates/dhcpv6-relay.yaml
+      OS::OVB::ProvisionNetRouter: OS::Heat::None
+      OS::OVB::ProvisionNetRouterInterface: OS::Heat::None
   -
     name: routed-networks-role
     title: Base Role Configuration for Routed Networks

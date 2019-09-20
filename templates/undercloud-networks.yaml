@@ -82,5 +82,7 @@ outputs:
   # The provision and public network routers is here for compatibility only
   provision_network_routers:
     value: null
+  provision_network_routers_data:
+    value: null
   public_network_router:
     value: null

@@ -12,3 +12,5 @@ resource_registry:
   OS::OVB::UndercloudNetworks: undercloud-networks.yaml
   OS::OVB::DHCPRelay: OS::Heat::None
   OS::OVB::RouterAdvertisementDaemon: OS::Heat::None
+  OS::OVB::ProvisionNetRouter: OS::Neutron::Router
+  OS::OVB::ProvisionNetRouterInterface: OS::Neutron::RouterInterface
