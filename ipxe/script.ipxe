@@ -1,0 +1,47 @@
+#!ipxe
+#
+# This is the iPXE boot script that we embed into the iPXE binary.
+#
+# The default behaviour is to get DHCP and assume that DHCP includes
+# the filename option. If it fails, then it just stops.
+#
+# This script implements more retries until both DHCP and the filename
+# option are present. This makes sure that the underlying network has
+# plenty of time to be ready. If this still fails, then rather than
+# halt, then host will reboot to try again.
+#
+# Based on:
+# https://github.com/danderson/netboot/blob/master/pixiecore/boot.ipxe
+#
+set attempts:int32 10
+set x:int32 0
+
+:loop
+dhcp || goto nodhcp
+isset ${filename} || goto nobootconfig
+goto boot
+
+:nodhcp
+echo No DHCP response, retrying (attempt ${x}/${attempts}).
+sleep 1
+goto retry
+
+:nobootconfig
+echo No filename option present, retrying (attempt ${x}/${attempts}).
+sleep 1
+goto retry
+
+:retry
+iseq ${x} ${attempts} && goto fail ||
+inc x
+goto loop
+
+:boot
+chain ${filename}
+
+:fail
+echo Failed to get a correct DHCP response after ${attempts} attempts.
+echo
+echo Rebooting in 5 seconds...
+sleep 5
+reboot
