@@ -40,6 +40,16 @@ sleep 1
 goto dhcploop
 
 :boot
+echo Booting using ${ifname}.
+
+# This is a hack to workaround LP bug 1845487:
+#   https://bugs.launchpad.net/puppet-ironic/+bug/1845487
+# It should be removed when the fix for that bug is available and backported to
+# all supported releases.
+isset ${mtu} && echo -n Overriding MTU from dhcp of ${mtu}.
+set mtu 1350
+echo Set MTU to ${mtu}.
+
 chain ${filename}
 
 :fail
