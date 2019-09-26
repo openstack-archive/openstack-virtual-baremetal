@@ -3,3 +3,15 @@ IPXE image-building tools
 
 This directory contains tools for for building an IPXE image. Run ``make`` to
 build the image. It is provided as both raw and qcow2.
+
+The iPXE image has minimal build dependencies. On a Fedora system, these are:
+
+* make
+* gcc
+* perl
+* xz-devel
+* genisoimage
+* qemu-img
+
+Please ping Ben Nemec <openstack@nemebean.com> when making a change which
+affects the ipxe image to update the public repo of pre-built images.
