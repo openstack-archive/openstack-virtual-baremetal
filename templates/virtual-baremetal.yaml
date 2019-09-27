@@ -127,6 +127,11 @@ resources:
       networks: {get_param: networks}
       dhcp_ips: {get_param: dhcp_ips}
 
+  ipv6_radvd:
+    type: OS::OVB::RouterAdvertisementDaemon
+    properties:
+      networks: {get_param: networks}
+
 outputs:
   baremetal_networks_routers_addresses:
     value: {get_attr: [baremetal_networks, routers_addresses]}

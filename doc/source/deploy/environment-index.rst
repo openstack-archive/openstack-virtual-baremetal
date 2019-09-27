@@ -115,6 +115,24 @@ control the instances via IPMI. It will also prevent use of
 ovb-build-nodes-json because there will be no BMC addresses.
 
 
+Configuration for router advertisement daemon (radvd)
+-----------------------------------------------------
+
+**File:** environments/ipv6-radvd-configuration.yaml
+
+**Description:** Contains the available parameters that need to be configured when using
+a IPv6 network. Requires the ipv6-radvd.yaml environment.
+
+
+Enable router advertisement daemon (radvd)
+------------------------------------------
+
+**File:** environments/ipv6-radvd.yaml
+
+**Description:** Deploy the stack with a router advertisement daemon running for the
+provisioning network.
+
+
 Public Network External Router
 ------------------------------
 

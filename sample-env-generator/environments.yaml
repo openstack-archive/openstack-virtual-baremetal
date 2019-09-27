@@ -263,4 +263,22 @@ environments:
       ovb-build-nodes-json because there will be no BMC addresses.
     resource_registry:
       OS::OVB::BMC: ../templates/bmc-none.yaml
-
+  -
+    name: ipv6-radvd-configuration
+    title: Configuration for router advertisement daemon (radvd)
+    description: |
+      Contains the available parameters that need to be configured when using
+      a IPv6 network. Requires the ipv6-radvd.yaml environment.
+    files:
+      templates/ipv6-radvd.yaml:
+        parameters:
+          - radvd_flavor
+          - radvd_image
+  -
+    name: ipv6-radvd
+    title: Enable router advertisement daemon (radvd)
+    description: |
+      Deploy the stack with a router advertisement daemon running for the
+      provisioning network.
+    resource_registry:
+      OS::OVB::RouterAdvertisementDaemon: ../templates/ipv6-radvd.yaml

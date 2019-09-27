@@ -1,0 +1,174 @@
+heat_template_version: 2016-10-14
+
+parameters:
+
+  key_name:
+    type: string
+    default: default
+    description: Nova keypair to inject into the undercloud and bmc
+
+  radvd_flavor:
+    type: string
+    default: m1.small
+    description: The Nova flavor to use for the radvd instance
+
+  radvd_image:
+    type: string
+    default: CentOS-7-x86_64-GenericCloud
+    description: |
+      The base image for the radvd instance.  A CentOS 7 image is currently
+      the only one supported.
+
+  radvd_provision_address:
+    type: string
+    description: radvd address on the provision network subnet
+    default: fd12:3456:789a:1::fffe
+
+  IPv6_dhcpv6-statefull:
+    type: boolean
+    description: |
+      Controls radvd parameters AdvManagedFlag and AdvAutonomous. For stateful
+      addressing these should be AdvManagedFlag: on, AdvAutonomous: off, for
+      statelss (SLAAC) these should be  AdvManagedFlag: off, AdvAutonomous: on.
+    default: false
+
+
+  networks:
+    type: json
+
+  private_net:
+    type: string
+
+conditions:
+  dhcpv6-statefull:
+    get_param: IPv6_dhcpv6-statefull
+
+resources:
+  radvd_port_private:
+    type: OS::Neutron::Port
+    properties:
+      name: radvd_port_private
+      network: {get_param: private_net}
+
+  radvd_port_provision:
+    type: OS::Neutron::Port
+    properties:
+      name: radvd_port_provision
+      network: {get_param: [networks, provision]}
+      port_security_enabled: False
+      fixed_ips:
+       - ip_address: {get_param: radvd_provision_address}
+
+  init_packages:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        package_upgrade: true
+        packages:
+          - centos-release-openstack-stein
+          - radvd
+
+  init_files:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        write_files:
+          - path: /etc/os-net-config/config.yaml
+            content:
+              str_replace:
+                template: |
+                  network_config:
+                    - type: interface
+                      name: eth0
+                      use_dhcp: false
+                      use_dhcpv6: false
+                      addresses:
+                        - ip_netmask: $private_ip_netmask
+                      routes:
+                        - default: true
+                          next_hop: $private_gateway
+                    - type: interface
+                      name: eth1
+                      use_dhcp: false
+                      use_dhcpv6: false
+                      addresses:
+                        - ip_netmask: $provision_ip_netmask
+                params:
+                  $private_gateway: {get_attr: [radvd_port_private, subnets, 0, gateway_ip]}
+                  $private_ip_netmask:
+                    list_join:
+                      - /
+                      - - {get_attr: [radvd_port_private, fixed_ips, 0, ip_address]}
+                        - {str_split: ['/', {get_attr: [radvd_port_private, subnets, 0, cidr]}, 1]}
+                  $provision_ip_netmask:
+                    list_join:
+                      - /
+                      - - {get_attr: [radvd_port_provision, fixed_ips, 0, ip_address]}
+                        - {str_split: ['/', {get_attr: [radvd_port_provision, subnets, 0, cidr]}, 1]}
+          - path: /etc/radvd.conf
+            content:
+              str_replace:
+                template: |
+                  interface eth1 {
+                    AdvSendAdvert on;
+                    AdvManagedFlag $AdvManagedFlag;
+                    AdvOtherConfigFlag on;
+                    AdvRASolicitedUnicast on;
+                    AdvLinkMTU $MTU;
+                    prefix $provision_cidr {
+                      AdvAutonomous $AdvAutonomous;
+                      AdvOnLink on;
+                    };
+                  };
+                params:
+                  $provision_cidr: {get_attr: [radvd_port_provision, subnets, 0, cidr]}
+                  $MTU: 1450
+                  $AdvManagedFlag:
+                    if:
+                      - dhcpv6-statefull
+                      - 'on'
+                      - 'off'
+                  $AdvAutonomous:
+                    if:
+                      - dhcpv6-statefull
+                      - 'off'
+                      - 'on'
+          - path: /etc/sysctl.d/98-ipv6-routing.conf
+            content: |
+              net.ipv6.conf.all.forwarding = 1
+              net.ipv6.conf.eth1.forwarding = 1
+              net.ipv6.conf.eth1.mc_forwarding = 1
+
+  init_runcmd:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        runcmd:
+          - ['sysctl','--system']
+          - ['yum', '-y', 'install', 'os-net-config']
+          - ['os-net-config', '--config', '/etc/os-net-config/config.yaml']
+          - ['systemctl', 'enable', 'radvd.service']
+          - ['systemctl', 'start', 'radvd.service']
+          - ['systemctl', 'status', 'radvd.service']
+
+  radvd_init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: {get_resource: init_packages}
+        - config: {get_resource: init_files}
+        - config: {get_resource: init_runcmd}
+
+  radvb_server:
+    type: OS::Nova::Server
+    properties:
+      name: radvd
+      flavor: {get_param: radvd_flavor}
+      image: {get_param: radvd_image}
+      key_name: {get_param: key_name}
+      networks:
+        - {port: {get_resource: radvd_port_private}}
+        - {port: {get_resource: radvd_port_provision}}
+      config_drive: true
+      user_data_format: RAW
+      user_data: {get_resource: radvd_init}
