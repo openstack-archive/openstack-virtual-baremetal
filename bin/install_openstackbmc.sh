@@ -59,9 +59,16 @@ print(yaml.safe_dump(clouds, default_flow_style=False))' > ~/.config/openstack/c
 rm -f /tmp/bmc-cloud-data
 export OS_CLOUD=host_cloud
 
-private_subnet=$(openstack network show -f value -c subnets $private_net)
-default_gw=$(openstack subnet show -f value -c gateway_ip $private_subnet)
-prefix_len=$(openstack subnet show -f value -c cidr $private_subnet | awk -F / '{print $2}')
+# NOTE(hjensas): The subnets field was a string in earlier versions of
+# openstacksdk, in later version it outputs the field as json.
+# Try to use json query first, if that fails it's likely old openstasksdk
+# so just get the value
+if ! private_subnet=$(openstack network show -f json $private_net | jq --raw-output .subnets[0]); then
+  private_subnet=$(openstack network show -f value -c subnets $private_net)
+fi
+subnet_info=$(openstack subnet show -f json $private_subnet)
+default_gw=$(echo $subnet_info | jq --raw-output .gateway_ip)
+prefix_len=$(echo $subnet_info | jq --raw-output .cidr | awk -F / '{print $2}')
 cache_status=
 if [ "$bmc_use_cache" != "False" ]; then
     cache_status="--cache-status"
@@ -100,9 +107,16 @@ EOF
 for i in $(seq 1 $bm_node_count)
 do
     bm_port="$bm_prefix_$(($i-1))"
-    bm_instance=$(openstack port show -c device_id -f value $bm_port)
+    bm_instance=$(openstack port show -f json $bm_port | jq --raw-output .device_id)
     bmc_port="$bmc_prefix_$(($i-1))"
-    bmc_ip=$(openstack port show -c fixed_ips -f value $bmc_port | awk -F \' '{print $2}')
+    # NOTE(hjensas): The fixed_ips field was a string in earlier versions of
+    # openstacksdk, in later version it outputs the field as json.
+    # Try to use json query first, if that fails it's likely old openstasksdk
+    # so filter with awk.
+    if ! bmc_ip=$(openstack port show -f json $bmc_port | jq --raw-output .fixed_ips[0].ip_address); then
+      bmc_ip=$(openstack port show -f json $bmc_port | jq --raw-output .fixed_ips | awk -F \' '{print $2}')
+    fi
+
     unit="openstack-bmc-$bm_port.service"
 
     cat <<EOF >/usr/lib/systemd/system/$unit
