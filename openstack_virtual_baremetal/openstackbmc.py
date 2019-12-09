@@ -88,6 +88,7 @@ class OpenStackBmc(bmc.Bmc):
         self.instance = None
         self.cache_status = cache_status
         self.cached_status = None
+        self.cached_task = None
         self.target_status = None
         # At times the bmc service is started before important things like
         # networking have fully initialized.  Keep trying to find the
@@ -154,11 +155,23 @@ class OpenStackBmc(bmc.Bmc):
         sys.exit(0)
 
     def _instance_active(self):
-        if (self.cached_status is None or
-                self.cached_status != self.target_status or
-                not self.cache_status):
-            self.cached_status = self.novaclient.servers.get(self.instance).status  # noqa: E501
-        return self.cached_status == 'ACTIVE'
+        no_cached_data = (self.cached_status is None)
+        instance_changing_state = (self.cached_status != self.target_status)
+        cache_disabled = (not self.cache_status)
+
+        if (no_cached_data or instance_changing_state or cache_disabled):
+            instance = self.novaclient.servers.get(self.instance)
+            self.cached_status = instance.status
+            self.cached_task = getattr(instance, 'OS-EXT-STS:task_state')
+
+        instance_is_active = (self.cached_status == 'ACTIVE')
+        instance_is_shutoff = (self.cached_status == 'SHUTOFF')
+        instance_is_powering_on = (self.cached_task == 'powering-on')
+
+        return (
+            instance_is_active or
+            (instance_is_shutoff and instance_is_powering_on)
+        )
 
     def get_power_state(self):
         """Returns the current power state of the managed instance"""
