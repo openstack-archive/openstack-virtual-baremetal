@@ -102,6 +102,7 @@ class TestOpenStackBmc(unittest.TestCase):
         self.bmc.novaclient = self.mock_client
         self.bmc.instance = 'abc-123'
         self.bmc.cached_status = None
+        self.bmc.cached_task = None
         self.bmc.target_status = None
         self.bmc.cache_status = False
 
@@ -211,6 +212,15 @@ class TestOpenStackBmc(unittest.TestCase):
         self.bmc.cache_status = True
         self.assertTrue(self.bmc._instance_active())
         self.assertFalse(self.mock_client.servers.get.called)
+
+    def test_instance_active_while_powering_on(self, mock_nova, mock_log,
+                                               mock_init):
+        self._create_bmc(mock_nova)
+        mock_server = mock.Mock()
+        mock_server.status = 'SHUTOFF'
+        setattr(mock_server, 'OS-EXT-STS:task_state', 'powering-on')
+        self.mock_client.servers.get.return_value = mock_server
+        self.assertTrue(self.bmc._instance_active())
 
     def test_cache_disabled(self, mock_nova, mock_log, mock_init):
         self._create_bmc(mock_nova)
