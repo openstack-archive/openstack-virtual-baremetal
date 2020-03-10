@@ -14,27 +14,27 @@
 # https://github.com/danderson/netboot/blob/master/pixiecore/boot.ipxe
 #
 set attempts:int32 10
-set x:int32 0
+set x:int32 1
 
-:loop
+:dhcploop
 dhcp || goto nodhcp
 isset ${filename} || goto nobootconfig
 goto boot
 
 :nodhcp
-echo No DHCP response, retrying (attempt ${x}/${attempts}).
-sleep 1
+echo -n No DHCP response
 goto retry
 
 :nobootconfig
-echo No filename option present, retrying (attempt ${x}/${attempts}).
-sleep 1
+echo -n No filename option present
 goto retry
 
 :retry
+echo (attempt ${x}/${attempts}).
 iseq ${x} ${attempts} && goto fail ||
 inc x
-goto loop
+sleep 1
+goto dhcploop
 
 :boot
 chain ${filename}
