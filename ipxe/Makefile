@@ -9,6 +9,8 @@ ipxe-boot.qcow2: ipxe-boot.img
 	qemu-img convert -f raw -O qcow2 $< $@
 
 # We disable -Werror so we can build older commits with newer gcc
+# Don't use parallel make, as this races to initialise config headers in a
+# clean repo.
 $(IPXE_IMG):
 	$(MAKE) -C ipxe/src NO_WERROR=1 EMBED=../../script.ipxe bin/ipxe.iso
 

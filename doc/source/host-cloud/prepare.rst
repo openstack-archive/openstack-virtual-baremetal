@@ -1,6 +1,20 @@
 Preparing the Host Cloud Environment
 ====================================
 
+#. Build or download an ipxe-boot image for the baremetal instances.
+
+   #. To download a pre-built image::
+
+       wget https://repos.fedorapeople.org/repos/openstack-m/ovb/ipxe-boot.qcow2
+
+   #. To build the image, run the following from the root of the OVB repo::
+
+       make -C ipxe
+
+      To install the required build dependencies on a Fedora system::
+
+       sudo dnf install -y make gcc perl xz-devel genisoimage qemu-img
+
 #. Source an rc file that will provide admin credentials for the host cloud.
 
 #. Upload an ipxe-boot image for the baremetal instances::
