@@ -32,12 +32,20 @@ parameters:
       statelss (SLAAC) these should be  AdvManagedFlag: off, AdvAutonomous: on.
     default: false
 
-
   networks:
     type: json
 
   private_net:
     type: string
+
+  NtpPool:
+    default: pool.ntp.org
+    description: |
+      NTP pool, the pool name is expected to resolve to multiple addresses which
+      might change over time. For IPv6 overclouds the radvd instance can act
+      as the NTP server.
+    type: string
+
 
 conditions:
   dhcpv6-statefull:
@@ -67,6 +75,7 @@ resources:
         packages:
           - centos-release-openstack-stein
           - radvd
+          - chrony
 
   init_files:
     type: OS::Heat::CloudConfig
@@ -138,6 +147,30 @@ resources:
               net.ipv6.conf.all.forwarding = 1
               net.ipv6.conf.eth1.forwarding = 1
               net.ipv6.conf.eth1.mc_forwarding = 1
+          - path: /etc/chrony.conf
+            content:
+              str_replace:
+                template: |
+                  pool $ntp_pool iburst
+                  # Record the rate at which the system clock gains/losses time.
+                  driftfile /var/lib/chrony/drift
+                  # Allow the system clock to be stepped in the first three updates
+                  # if its offset is larger than 1 second.
+                  makestep 1.0 3
+                  # Allow NTP client access from provision network.
+                  allow $provision_cidr
+                  # Serve time even if not synchronized to a time source.
+                  local stratum 10
+                  # Specify file containing keys for NTP authentication.
+                  keyfile /etc/chrony.keys
+                  # Get TAI-UTC offset and leap seconds from the system tz database.
+                  leapsectz right/UTC
+                  # Specify directory for log files.
+                  logdir /var/log/chrony
+                params:
+                  $ntp_pool: {get_param: NtpPool}
+                  $provision_cidr: {get_attr: [radvd_port_provision, subnets, 0, cidr]}
+
 
   init_runcmd:
     type: OS::Heat::CloudConfig
@@ -150,6 +183,9 @@ resources:
           - ['systemctl', 'enable', 'radvd.service']
           - ['systemctl', 'start', 'radvd.service']
           - ['systemctl', 'status', 'radvd.service']
+          - ['systemctl', 'enable', 'chronyd.servce']
+          - ['systemctl', 'start', 'chronyd.servce']
+          - ['systemctl', 'status', 'chronyd.servce']
 
   radvd_init:
     type: OS::Heat::MultipartMime
