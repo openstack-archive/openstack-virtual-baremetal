@@ -60,8 +60,7 @@ def _parse_args():
                         action='store_true',
                         help='Include addresses for all nodes on all networks '
                              'in a network_details key')
-    # TODO(dtantsur): change the default to ipmi when Ocata is not supported
-    parser.add_argument('--driver', default='pxe_ipmitool',
+    parser.add_argument('--driver', default='ipmi',
                         help='Bare metal driver to use')
     parser.add_argument('--physical_network',
                         action='store_true',
