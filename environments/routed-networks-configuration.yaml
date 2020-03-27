@@ -10,6 +10,11 @@
 #   a routed networks environment. Requires the routed-networks.yaml
 #   environment.
 parameter_defaults:
+  # The IP addresses of DHCP servers to relay DHCP requests to.
+  # Mandatory. This parameter must be set by the user.
+  # Type: json
+  dhcp_ips: <None>
+
   # The Nova flavor to use for the dhcrelay instance
   # Type: string
   dhcp_relay_flavor: m1.small
@@ -18,4 +23,20 @@ parameter_defaults:
   # the only one supported.
   # Type: string
   dhcp_relay_image: CentOS-7-x86_64-GenericCloud
+
+  # DHCP relay address on the provision2 network subnet
+  # Type: string
+  dhcp_relay_provision2_address: 192.168.25.253
+
+  # DHCP relay address on the provision3 network subnet
+  # Type: string
+  dhcp_relay_provision3_address: 192.168.26.253
+
+  # DHCP relay address on the provision network subnet
+  # Type: string
+  dhcp_relay_provision_address: 192.168.24.253
+
+  # Prefix for the name of the dhcrelay instance
+  # Type: string
+  dhcrelay_prefix: dhcrelay
 

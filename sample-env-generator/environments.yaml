@@ -202,6 +202,11 @@ environments:
         parameters:
           - dhcp_relay_flavor
           - dhcp_relay_image
+          - dhcrelay_prefix
+          - dhcp_relay_provision_address
+          - dhcp_relay_provision2_address
+          - dhcp_relay_provision3_address
+          - dhcp_ips
   -
     name: routed-networks
     title: Enable Routed Networks
@@ -274,6 +279,9 @@ environments:
         parameters:
           - radvd_flavor
           - radvd_image
+          - radvd_prefix
+          - radvd_provision_address
+          - IPv6_dhcpv6-statefull
   -
     name: ipv6-radvd
     title: Enable router advertisement daemon (radvd)
