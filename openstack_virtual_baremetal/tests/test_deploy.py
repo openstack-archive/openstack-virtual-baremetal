@@ -14,10 +14,10 @@
 # under the License.
 
 import copy
+from unittest import mock
 import unittest
 import yaml
 
-import mock
 import testtools
 
 from openstack_virtual_baremetal import deploy

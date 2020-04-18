@@ -15,9 +15,9 @@
 import copy
 import json
 import sys
+from unittest import mock
 
 import fixtures
-import mock
 import testtools
 
 from openstack_virtual_baremetal import build_nodes_json

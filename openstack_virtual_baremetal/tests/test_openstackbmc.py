@@ -13,10 +13,10 @@
 # under the License.
 
 import sys
+from unittest import mock
 import unittest
 
 import fixtures
-import mock
 from novaclient import exceptions
 import testtools
 
