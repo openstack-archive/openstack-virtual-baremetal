@@ -131,7 +131,7 @@ resources:
                   };
                 params:
                   $provision_cidr: {get_attr: [radvd_port_provision, subnets, 0, cidr]}
-                  $MTU: 1450
+                  $MTU: {get_attr: [radvd_port_provision, network, mtu]}
                   $AdvManagedFlag:
                     if:
                       - dhcpv6-statefull
