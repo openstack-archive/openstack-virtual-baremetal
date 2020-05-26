@@ -70,3 +70,8 @@ outputs:
     - {port: {get_resource: private_undercloud_port}}
     - {port: {get_resource: provision_undercloud_port}}
     - {port: {get_resource: public_undercloud_port}}
+  addresses:
+    value:
+      private_undercloud: {get_attr: [private_undercloud_port, fixed_ips, 0, ip_address]}
+      provision_undercloud: {get_attr: [provision_undercloud_port, fixed_ips, 0, ip_address]}
+      public_undercloud: {get_attr: [public_undercloud_port, fixed_ips, 0, ip_address]}
