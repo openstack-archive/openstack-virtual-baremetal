@@ -15,6 +15,9 @@ environments:
           - baremetal_prefix
           - node_count
           - public_net
+          - public_net_cidr
+          - public_net_allocation_pools
+          - public_net_ip_version
           - public_net_shared
           - provision_net
           - provision_net_shared
