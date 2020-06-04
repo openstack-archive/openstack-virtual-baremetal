@@ -31,6 +31,11 @@ parameters:
     description: CIDR for external network subnet
     default: 10.0.0.0/24
 
+  public_net_allocation_pools:
+    type: comma_delimited_list
+    description: Allocation Pools for the public network
+    default: []
+
   public_subnet_ip_version:
     type: number
     description: IP version for the public subnet

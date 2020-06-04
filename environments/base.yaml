@@ -61,6 +61,18 @@ parameter_defaults:
   # Type: string
   public_net: public
 
+  # Allocation Pools for the public network
+  # Type: comma_delimited_list
+  public_net_allocation_pools: []
+
+  # CIDR for external network subnet
+  # Type: string
+  public_net_cidr: 10.0.0.0/24
+
+  # IP version for the public subnet
+  # Type: number
+  public_net_ip_version: 4
+
   # Whether this network should be shared across all tenants
   # Type: boolean
   public_net_shared: False
