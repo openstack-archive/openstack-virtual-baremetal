@@ -65,3 +65,6 @@ outputs:
       - {get_param: private_net}
       - 0
       - addr
+  undercloud_host_public_ip:
+    description: "ip of the undercloud instance on the public network"
+    value: {get_attr: [undercloud_ports, addresses, public_undercloud]}
