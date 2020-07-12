@@ -139,18 +139,14 @@ def _generate_id_env(args):
     _add_identifier(env_data, 'provision_net2', args.id, default='provision2')
     _add_identifier(env_data, 'provision_net3', args.id, default='provision3')
     _add_identifier(env_data, 'public_net', args.id, default='public')
-    _add_identifier(env_data,
-                    'baremetal_prefix',
-                    args.id,
-                    default='baremetal')
+    _add_identifier(env_data, 'baremetal_prefix', args.id, default='baremetal')
     role = env_data['parameter_defaults'].get('role')
     if role:
         _add_identifier(env_data, 'baremetal_prefix', role)
     _add_identifier(env_data, 'bmc_prefix', args.id, default='bmc')
-    _add_identifier(env_data,
-                    'undercloud_name',
-                    args.id,
-                    default='undercloud')
+    _add_identifier(env_data, 'undercloud_name', args.id, default='undercloud')
+    _add_identifier(env_data, 'dhcrelay_prefix', args.id, default='dhcrelay')
+    _add_identifier(env_data, 'radvd_prefix', args.id, default='radvd')
     _add_identifier(env_data, 'overcloud_internal_net', args.id,
                     default='internal')
     _add_identifier(env_data, 'overcloud_storage_net', args.id,

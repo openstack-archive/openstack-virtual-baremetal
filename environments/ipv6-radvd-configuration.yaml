@@ -9,6 +9,12 @@
 #   Contains the available parameters that need to be configured when using
 #   a IPv6 network. Requires the ipv6-radvd.yaml environment.
 parameter_defaults:
+  # Controls radvd parameters AdvManagedFlag and AdvAutonomous. For stateful
+  # addressing these should be AdvManagedFlag: on, AdvAutonomous: off, for
+  # statelss (SLAAC) these should be  AdvManagedFlag: off, AdvAutonomous: on.
+  # Type: boolean
+  IPv6_dhcpv6-statefull: False
+
   # The Nova flavor to use for the radvd instance
   # Type: string
   radvd_flavor: m1.small
@@ -17,4 +23,12 @@ parameter_defaults:
   # the only one supported.
   # Type: string
   radvd_image: CentOS-7-x86_64-GenericCloud
+
+  # Prefix for the name of the radvd instance
+  # Type: string
+  radvd_prefix: radvd
+
+  # radvd address on the provision network subnet
+  # Type: string
+  radvd_provision_address: fd12:3456:789a:1::fffe
 
