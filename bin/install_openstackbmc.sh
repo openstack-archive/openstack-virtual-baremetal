@@ -59,42 +59,57 @@ print(yaml.safe_dump(clouds, default_flow_style=False))' > ~/.config/openstack/c
 rm -f /tmp/bmc-cloud-data
 export OS_CLOUD=host_cloud
 
-# NOTE(hjensas): The subnets field was a string in earlier versions of
-# openstacksdk, in later version it outputs the field as json.
-# Try to use json query first, if that fails it's likely old openstasksdk
-# so just get the value
-if ! private_subnet=$(openstack network show -f json $private_net | jq --raw-output .subnets[0]); then
-  private_subnet=$(openstack network show -f value -c subnets $private_net)
-fi
-subnet_info=$(openstack subnet show -f json $private_subnet)
-default_gw=$(echo $subnet_info | jq --raw-output .gateway_ip)
-prefix_len=$(echo $subnet_info | jq --raw-output .cidr | awk -F / '{print $2}')
-cache_status=
-if [ "$bmc_use_cache" != "False" ]; then
-    cache_status="--cache-status"
-fi
+# python script do query the cloud and write out the bmc services/configs
+$(command -v python3 || command -v python2) <<EOF
+import json
+import openstack
+import os
+import sys
 
-mkdir /etc/os-net-config
-echo "network_config:" > /etc/os-net-config/config.yaml
-echo "  -" >> /etc/os-net-config/config.yaml
-echo "    type: interface" >> /etc/os-net-config/config.yaml
-echo "    name: eth0" >> /etc/os-net-config/config.yaml
-echo "    use_dhcp: false" >> /etc/os-net-config/config.yaml
-echo "    mtu: 1450" >> /etc/os-net-config/config.yaml
-echo "    routes:" >> /etc/os-net-config/config.yaml
-echo "      - default: true" >> /etc/os-net-config/config.yaml
-echo "        next_hop: $default_gw" >> /etc/os-net-config/config.yaml
-echo "    addresses:" >> /etc/os-net-config/config.yaml
-echo "    - ip_netmask: $bmc_utility/$prefix_len" >> /etc/os-net-config/config.yaml
+cache_status = ''
+if not $bmc_use_cache:
+    cache_status = '--cache-status'
 
-cat <<EOF >/usr/lib/systemd/system/config-bmc-ips.service
+conn = openstack.connect(cloud='host_cloud')
+print('Fetching private network')
+items = conn.network.networks(name='$private_net')
+private_net = next(items, None)
+
+print('Fetching private subnet')
+private_subnet = conn.network.find_subnet(private_net.subnet_ids[0])
+
+if not private_subnet:
+    print('[ERROR] Could not find private subnet')
+    sys.exit(1)
+
+default_gw = private_subnet.gateway_ip
+prefix_len = private_subnet.cidr.split('/')[1]
+mtu = private_net.mtu
+
+os_net_config = {
+  'network_config': [{
+    'type': 'interface',
+    'name': 'eth0',
+    'use_dhcp': False,
+    'mtu': mtu,
+    'routes': [{
+      'default': True,
+      'next_hop': default_gw,
+    }],
+    'addresses': [
+      { 'ip_netmask': '$bmc_utility/{}'.format(prefix_len) }
+    ]
+  }]
+}
+
+os_net_config_unit = """
 [Unit]
 Description=config-bmc-ips Service
 Requires=network.target
 After=network.target
 
 [Service]
-ExecStart=/bin/os-net-config --verbose
+ExecStart=/bin/os-net-config -c /etc/os-net-config/config.json -v
 Type=oneshot
 User=root
 StandardOutput=kmsg+console
@@ -102,31 +117,30 @@ StandardError=inherit
 
 [Install]
 WantedBy=multi-user.target
-EOF
+"""
 
-for i in $(seq 1 $bm_node_count)
-do
-    bm_port="$bm_prefix_$(($i-1))"
-    bm_instance=$(openstack port show -f json $bm_port | jq --raw-output .device_id)
-    bmc_port="$bmc_prefix_$(($i-1))"
-    # NOTE(hjensas): The fixed_ips field was a string in earlier versions of
-    # openstacksdk, in later version it outputs the field as json.
-    # Try to use json query first, if that fails it's likely old openstasksdk
-    # so filter with awk.
-    if ! bmc_ip=$(openstack port show -f json $bmc_port | jq --raw-output .fixed_ips[0].ip_address); then
-      bmc_ip=$(openstack port show -f json $bmc_port | jq --raw-output .fixed_ips | awk -F \' '{print $2}')
-    fi
+print('Writing out config-bmc-ips.service')
+with open('/usr/lib/systemd/system/config-bmc-ips.service', 'w') as f:
+    f.write(os_net_config_unit)
 
-    unit="openstack-bmc-$bm_port.service"
+print('Fetching bm ports')
+bmc_port_names = [('$bmc_prefix_{}'.format(x), '$bm_prefix_{}'.format(x)) for x in range(0, $bm_node_count)]
+bmc_ports = {}
+for (bmc_port_name, bm_port_name) in bmc_port_names:
+    print('Finding {} port'.format(bmc_port_name))
+    bmc_ports[bmc_port_name] = conn.network.find_port(bmc_port_name)
+    print('Finding {} port'.format(bm_port_name))
+    bmc_ports[bm_port_name] = conn.network.find_port(bm_port_name)
 
-    cat <<EOF >/usr/lib/systemd/system/$unit
+
+unit_template = """
 [Unit]
-Description=openstack-bmc $bm_port Service
+Description=openstack-bmc {port_name} Service
 Requires=config-bmc-ips.service
 After=config-bmc-ips.service
 
 [Service]
-ExecStart=/usr/local/bin/openstackbmc  --os-cloud host_cloud --instance $bm_instance --address $bmc_ip $cache_status
+ExecStart=/usr/local/bin/openstackbmc --os-cloud host_cloud --instance {port_instance} --address {port_ip} {cache_status}
 Restart=always
 
 User=root
@@ -135,36 +149,60 @@ StandardError=inherit
 
 [Install]
 WantedBy=multi-user.target
+"""
+for (bmc_port_name, bm_port_name) in bmc_port_names:
+    port_name = bm_port_name
+    unit_file = os.path.join('/usr/lib/systemd/system', 'openstack-bmc-{}.service'.format(port_name))
+    device_id = bmc_ports[bm_port_name].device_id
+    port = bmc_ports[bmc_port_name]
+    if isinstance(port.fixed_ips, list):
+        port_ip = port.fixed_ips[0].get('ip_address')
+    else:
+        # TODO: test older openstacksdk
+        port_ip = port.fixed_ips.split('\'')[1]
+
+    print('Writing out {}'.format(unit_file))
+    with open(unit_file, "w") as unit:
+        unit.write(unit_template.format(port_name=port_name,
+                                        port_instance=device_id,
+                                        port_ip=port_ip,
+                                        cache_status=cache_status))
+    addr = { 'ip_netmask': '{}/{}'.format(port_ip, prefix_len) }
+    os_net_config['network_config'][0]['addresses'].append(addr)
+
+
+if not os.path.isdir('/etc/os-net-config'):
+    os.mkdir('/etc/os-net-config')
+
+print('Writing /etc/os-net-config/config.json')
+with open('/etc/os-net-config/config.json', 'w') as f:
+    json.dump(os_net_config, f)
+
 EOF
+# reload systemd
+systemctl daemon-reload
 
-    echo "    - ip_netmask: $bmc_ip/$prefix_len" >> /etc/os-net-config/config.yaml
-done
-
-# It will be automatically started because the bmc services depend on it,
-# but to avoid confusion also explicitly enable it.
+# enable and start bmc ip service
 systemctl enable config-bmc-ips
+systemctl start config-bmc-ips
 
+# enable bmcs
 for i in $(seq 1 $bm_node_count)
 do
-    bm_port="$bm_prefix_$(($i-1))"
-    unit="openstack-bmc-$bm_port.service"
+    unit="openstack-bmc-$bm_prefix_$(($i-1)).service"
     systemctl enable $unit
     systemctl start $unit
 done
 
 sleep 5
 
-for i in $(seq 1 $bm_node_count)
-do
-    bm_port="$bm_prefix_$(($i-1))"
-    unit="openstack-bmc-$bm_port.service"
-    if ! systemctl status $unit
-    then
-        $signal_command --data-binary '{"status": "FAILURE"}'
-        echo "********** $unit failed to start **********"
-        exit 1
-    fi
-done
+if ! systemctl is-active openstack-bmc-* >/dev/null
+then
+    systemctl status openstack-bmc-*
+    $signal_command --data-binary '{"status": "FAILURE"}'
+    echo "********** $unit failed to start **********"
+    exit 1
+fi
 
 $signal_command --data-binary '{"status": "SUCCESS"}'
 
