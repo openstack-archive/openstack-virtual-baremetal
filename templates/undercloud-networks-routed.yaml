@@ -1,4 +1,4 @@
-heat_template_version: 2015-04-30
+heat_template_version: 2015-10-15
 
 parameters:
   provision_net:
@@ -112,7 +112,7 @@ parameters:
 
 resources:
   provision_router:
-    type: OS::Neutron::Router
+    type: OS::OVB::ProvisionNetRouter
     properties:
       name: provision-router
       external_gateway_info:
@@ -137,13 +137,14 @@ resources:
   provision_router_port:
     type: OS::Neutron::Port
     properties:
+      name: provision_router_port
       network: {get_resource: provision_network}
       port_security_enabled: false
       fixed_ips:
        - ip_address: {get_param: provision_net_router_address}
 
   provision_router_interface:
-    type: OS::Neutron::RouterInterface
+    type: OS::OVB::ProvisionNetRouterInterface
     properties:
       router: {get_resource: provision_router}
       port: {get_resource: provision_router_port}
@@ -167,13 +168,14 @@ resources:
   provision_router_port2:
     type: OS::Neutron::Port
     properties:
+      name: provision_router_port2
       network: {get_resource: provision_network2}
       port_security_enabled: false
       fixed_ips:
        - ip_address: {get_param: provision_net2_router_address}
 
   provision_router_interface2:
-    type: OS::Neutron::RouterInterface
+    type: OS::OVB::ProvisionNetRouterInterface
     properties:
       router: {get_resource: provision_router}
       port: {get_resource: provision_router_port2}
@@ -197,13 +199,14 @@ resources:
   provision_router_port3:
     type: OS::Neutron::Port
     properties:
+      name: provision_router_port3
       network: {get_resource: provision_network3}
       port_security_enabled: false
       fixed_ips:
        - ip_address: {get_param: provision_net3_router_address}
 
   provision_router_interface3:
-    type: OS::Neutron::RouterInterface
+    type: OS::OVB::ProvisionNetRouterInterface
     properties:
       router: {get_resource: provision_router}
       port: {get_resource: provision_router_port3}
@@ -258,6 +261,29 @@ outputs:
       provision_router: {get_attr: [provision_router_port, fixed_ips, 0, ip_address]}
       provision2_router: {get_attr: [provision_router_port2, fixed_ips, 0, ip_address]}
       provision3_router: {get_attr: [provision_router_port3, fixed_ips, 0, ip_address]}
+  provision_network_routers_data:
+    value:
+      provision_router_cidr:
+        list_join:
+          - /
+          - - {get_attr: [provision_router_port, fixed_ips, 0, ip_address]}
+            - {str_split: ['/', {get_attr: [provision_router_port, subnets, 0, cidr]}, 1]}
+      provision2_router_cidr:
+        list_join:
+          - /
+          - - {get_attr: [provision_router_port2, fixed_ips, 0, ip_address]}
+            - {str_split: ['/', {get_attr: [provision_router_port2, subnets, 0, cidr]}, 1]}
+      provision3_router_cidr:
+        list_join:
+          - /
+          - - {get_attr: [provision_router_port3, fixed_ips, 0, ip_address]}
+            - {str_split: ['/', {get_attr: [provision_router_port3, subnets, 0, cidr]}, 1]}
+      provision_router_resource: {get_resource: provision_router_port}
+      provision2_router_resource: {get_resource: provision_router_port2}
+      provision3_router_resource: {get_resource: provision_router_port3}
+      provision_mtu: {get_attr: [provision_router_port, network, mtu]}
+      provision2_mtu: {get_attr: [provision_router_port2, network, mtu]}
+      provision3_mtu: {get_attr: [provision_router_port3, network, mtu]}
   public_network_router:
     value:
       public_router: {get_attr: [public_router_port,  fixed_ips, 0, ip_address]}

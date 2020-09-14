@@ -60,6 +60,11 @@ parameters:
     description: |
       The IP addresses of DHCP servers to relay DHCP requests to.
 
+  provision_network_routers_data:
+    type: json
+    default: {}
+    description: A map with provision network router data
+
   # Ignored parameters for compatibility with QuintupleO env files
   undercloud_image:
     type: string
@@ -126,6 +131,7 @@ resources:
     properties:
       networks: {get_param: networks}
       dhcp_ips: {get_param: dhcp_ips}
+      provision_network_routers_data: {get_param: provision_network_routers_data}
 
   ipv6_radvd:
     type: OS::OVB::RouterAdvertisementDaemon

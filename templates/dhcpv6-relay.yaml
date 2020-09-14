@@ -1,0 +1,284 @@
+heat_template_version: 2016-10-14
+
+parameters:
+
+  key_name:
+    type: string
+    default: default
+    description: Nova keypair to inject into the undercloud and bmc
+
+  dhcp_relay_flavor:
+    type: string
+    default: m1.small
+    description: The Nova flavor to use for the dhcrelay instance
+
+  dhcp_relay_image:
+    type: string
+    default: CentOS-7-x86_64-GenericCloud
+    description: |
+      The base image for the dhcrelay instance.  A CentOS 7 image is currently
+      the only one supported.
+
+  provision_net_cidr:
+    type: string
+    description: CIDR for provision network subnet
+    default: fd12:3456:789a:1::/64
+
+  provision_net2_cidr:
+    type: string
+    description: CIDR for second provision network subnet
+    default: fd12:3456:789a:2::/64
+
+  provision_net3_cidr:
+    type: string
+    description: CIDR for third provision network subnet
+    default: fd12:3456:789a:3::/64
+
+  IPv6_dhcpv6-statefull:
+    type: boolean
+    description: |
+      Controls radvd parameters AdvManagedFlag and AdvAutonomous. For stateful
+      addressing these should be AdvManagedFlag: on, AdvAutonomous: off, for
+      statelss (SLAAC) these should be  AdvManagedFlag: off, AdvAutonomous: on.
+    default: false
+
+  dhcp_ips:
+    # Ignored parameter for compatibility with dhcp-relay.yaml
+    type: json
+    description: |
+      The IP addresses of DHCP servers to relay DHCP requests to.
+
+  networks:
+    # Ignored parameter for compatibility with dhcp-relay.yaml
+    type: json
+
+  private_net:
+    type: string
+
+  provision_network_routers_data:
+    type: json
+    description: A map with provision network router data
+
+  NtpPool:
+    default: pool.ntp.org
+    description: |
+      NTP pool, the pool name is expected to resolve to multiple addresses which
+      might change over time. For IPv6 overclouds the radvd-and-dhcrelay
+      instance can act as the NTP server.
+    type: string
+
+conditions:
+  dhcpv6-statefull:
+    get_param: IPv6_dhcpv6-statefull
+
+resources:
+  dhcp_relay_port_private:
+    type: OS::Neutron::Port
+    properties:
+      name: dhcp_relay_port_private
+      network: {get_param: private_net}
+
+  init_packages:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        package_upgrade: true
+        packages:
+          - centos-release-openstack-stein
+          - dnsmasq
+          - radvd
+          - chrony
+
+  init_files:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        write_files:
+          - path: /etc/os-net-config/config.yaml
+            content:
+              str_replace:
+                template: |
+                  network_config:
+                    - type: interface
+                      name: eth0
+                      use_dhcp: false
+                      use_dhcpv6: false
+                      addresses:
+                        - ip_netmask: $private_ip_netmask
+                      routes:
+                        - default: true
+                          next_hop: $private_gateway
+                    - type: interface
+                      name: eth1
+                      use_dhcp: false
+                      use_dhcpv6: false
+                      addresses:
+                        - ip_netmask: $provision_ip_netmask
+                    - type: interface
+                      name: eth2
+                      use_dhcp: false
+                      use_dhcpv6: false
+                      addresses:
+                        - ip_netmask: $provision2_ip_netmask
+                    - type: interface
+                      name: eth3
+                      use_dhcp: false
+                      use_dhcpv6: false
+                      addresses:
+                        - ip_netmask: $provision3_ip_netmask
+                params:
+                  $private_gateway: {get_attr: [dhcp_relay_port_private, subnets, 0, gateway_ip]}
+                  $private_ip_netmask:
+                    list_join:
+                      - /
+                      - - {get_attr: [dhcp_relay_port_private, fixed_ips, 0, ip_address]}
+                        - {str_split: ['/', {get_attr: [dhcp_relay_port_private, subnets, 0, cidr]}, 1]}
+                  $provision_ip_netmask: {get_param: [provision_network_routers_data, provision_router_cidr]}
+                  $provision2_ip_netmask: {get_param: [provision_network_routers_data, provision2_router_cidr]}
+                  $provision3_ip_netmask: {get_param: [provision_network_routers_data, provision3_router_cidr]}
+          - path: /etc/systemd/system/dhcrelay6.service
+            content:
+              str_replace:
+                template: |
+                  [Unit]
+                  Description=DHCPv6 dnsmasq Relay Agent Daemon
+                  Documentation=man:dnsmasq(8)
+                  Wants=network-online.target
+                  After=network-online.target
+
+                  [Service]
+                  Type=simple
+                  ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --port 0 --dhcp-relay=$provision2_ip,ff05::1:3,eth1 --dhcp-relay=$provision3_ip,ff05::1:3,eth1
+                  StandardError=null
+
+                  [Install]
+                  WantedBy=multi-user.target
+                params:
+                  $provision2_ip: {str_split: ['/', {get_param: [provision_network_routers_data, provision2_router_cidr]}, 0]}
+                  $provision3_ip: {str_split: ['/', {get_param: [provision_network_routers_data, provision3_router_cidr]}, 0]}
+          - path: /etc/radvd.conf
+            content:
+              str_replace:
+                template: |
+                  interface eth1 {
+                    AdvSendAdvert on;
+                    AdvManagedFlag $AdvManagedFlag;
+                    AdvOtherConfigFlag on;
+                    AdvRASolicitedUnicast on;
+                    AdvLinkMTU $provision_mtu;
+                    prefix $provision_cidr {
+                      AdvAutonomous $AdvAutonomous;
+                      AdvOnLink on;
+                    };
+                  };
+                  interface eth2 {
+                    AdvSendAdvert on;
+                    AdvManagedFlag $AdvManagedFlag;
+                    AdvOtherConfigFlag on;
+                    AdvRASolicitedUnicast on;
+                    AdvLinkMTU $provision2_mtu;
+                    prefix $provision2_cidr {
+                      AdvAutonomous $AdvAutonomous;
+                      AdvOnLink on;
+                    };
+                  };
+                  interface eth3 {
+                    AdvSendAdvert on;
+                    AdvManagedFlag $AdvManagedFlag;
+                    AdvOtherConfigFlag on;
+                    AdvRASolicitedUnicast on;
+                    AdvLinkMTU $provision3_mtu;
+                    prefix $provision3_cidr {
+                      AdvAutonomous $AdvAutonomous;
+                      AdvOnLink on;
+                    };
+                  };
+                params:
+                  $provision_cidr: {get_param: provision_net_cidr}
+                  $provision2_cidr: {get_param: provision_net2_cidr}
+                  $provision3_cidr: {get_param: provision_net3_cidr}
+                  $provision_mtu: {get_param: [provision_network_routers_data, provision_mtu]}
+                  $provision2_mtu: {get_param: [provision_network_routers_data, provision2_mtu]}
+                  $provision3_mtu: {get_param: [provision_network_routers_data, provision3_mtu]}
+                  $AdvManagedFlag:
+                    if:
+                      - dhcpv6-statefull
+                      - 'on'
+                      - 'off'
+                  $AdvAutonomous:
+                    if:
+                      - dhcpv6-statefull
+                      - 'off'
+                      - 'on'
+          - path: /etc/sysctl.d/98-ipv6-routing.conf
+            content: |
+              net.ipv6.conf.eth1.forwarding = 1
+              net.ipv6.conf.eth2.forwarding = 1
+              net.ipv6.conf.eth3.forwarding = 1
+          - - path: /etc/chrony.conf
+              content:
+                str_replace:
+                  template: |
+                    pool $ntp_pool iburst
+                    # Record the rate at which the system clock gains/losses time.
+                    driftfile /var/lib/chrony/drift
+                    # Allow the system clock to be stepped in the first three updates
+                    # if its offset is larger than 1 second.
+                    makestep 1.0 3
+                    # Allow NTP client access from provision network.
+                    allow $provision_cidr
+                    allow $provision2_cidr
+                    allow $provision3_cidr
+                    # Serve time even if not synchronized to a time source.
+                    local stratum 10
+                    # Specify file containing keys for NTP authentication.
+                    keyfile /etc/chrony.keys
+                    # Get TAI-UTC offset and leap seconds from the system tz database.
+                    leapsectz right/UTC
+                    # Specify directory for log files.
+                    logdir /var/log/chrony
+                  params:
+                    $ntp_pool: {get_param: NtpPool}
+                    $provision_cidr: {get_param: provision_net_cidr}
+                    $provision2_cidr: {get_param: provision_net2_cidr}
+                    $provision3_cidr: {get_param: provision_net3_cidr}
+
+  init_runcmd:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        runcmd:
+          - ['sysctl','--system']
+          - ['systemctl', 'daemon-reload']
+          - ['yum', '-y', 'install', 'os-net-config']
+          - ['os-net-config', '--config', '/etc/os-net-config/config.yaml']
+          - ['systemctl', 'enable', 'dhcrelay6.service']
+          - ['systemctl', 'start', 'dhcrelay6.service']
+          - ['systemctl', 'status', 'dhcrelay6.service']
+          - ['systemctl', 'enable', 'radvd.service']
+          - ['systemctl', 'start', 'radvd.service']
+          - ['systemctl', 'status', 'radvd.service']
+
+  dhcrelay_init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: {get_resource: init_packages}
+        - config: {get_resource: init_files}
+        - config: {get_resource: init_runcmd}
+
+  dhcp_relay_server:
+    type: OS::Nova::Server
+    properties:
+      name: radvd-and-dhcrelay
+      flavor: {get_param: dhcp_relay_flavor}
+      image: {get_param: dhcp_relay_image}
+      key_name: {get_param: key_name}
+      networks:
+        - {port: {get_resource: dhcp_relay_port_private}}
+        - {port: {get_param: [provision_network_routers_data, provision_router_resource]}}
+        - {port: {get_param: [provision_network_routers_data, provision2_router_resource]}}
+        - {port: {get_param: [provision_network_routers_data, provision3_router_resource]}}
+      config_drive: true
+      user_data_format: RAW
+      user_data: {get_resource: dhcrelay_init}

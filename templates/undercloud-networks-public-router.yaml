@@ -117,6 +117,8 @@ outputs:
   # The provision_network_routers is here for compatibility only
   provision_network_routers:
     value: {}
+  provision_network_routers_data:
+    value: {}
   public_network_router:
     value:
       public_router: {get_attr: [public_router_port,  fixed_ips, 0, ip_address]}
