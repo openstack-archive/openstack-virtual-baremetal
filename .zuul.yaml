@@ -1,3 +1,13 @@
 - project:
     templates:
       - openstack-python-jobs
+    check:
+      jobs:
+        - openstack-tox-py27:
+            required-projects: &project_overrides
+              - name: opendev.org/openstack/requirements
+                override-checkout: stable/train
+    gate:
+      jobs:
+        - openstack-tox-py27:
+            required-projects: *project_overrides
