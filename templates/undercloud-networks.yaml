@@ -32,7 +32,7 @@ parameters:
     default: 10.0.0.0/24
 
   public_net_allocation_pools:
-    type: comma_delimited_list
+    type: json
     description: Allocation Pools for the public network
     default: []
 

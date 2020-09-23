@@ -62,7 +62,7 @@ parameter_defaults:
   public_net: public
 
   # Allocation Pools for the public network
-  # Type: comma_delimited_list
+  # Type: json
   public_net_allocation_pools: []
 
   # CIDR for external network subnet
