@@ -6,6 +6,11 @@ parameters:
     default: provision
     description: Name of a network that will be used for provisioning traffic
 
+  provision_router_name:
+    type: string
+    description: Name of provisioning network router
+    default: provision_router
+
   provision_net_cidr:
     type: string
     description: CIDR for provision network subnet
@@ -114,7 +119,7 @@ resources:
   provision_router:
     type: OS::OVB::ProvisionNetRouter
     properties:
-      name: provision-router
+      name: {get_param: provision_router_name}
       external_gateway_info:
         network: {get_param: external_net}
 

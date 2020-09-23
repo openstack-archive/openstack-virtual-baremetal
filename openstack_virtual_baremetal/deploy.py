@@ -165,6 +165,17 @@ def _generate_id_env(args):
                     default='overcloud_storage_mgmt2')
     _add_identifier(env_data, 'overcloud_tenant_net2', args.id,
                     default='overcloud_tenant2')
+    _add_identifier(env_data, 'overcloud_internal_router', args.id,
+                    default='internal_router')
+    _add_identifier(env_data, 'overcloud_storage_router', args.id,
+                    default='storage_router')
+    _add_identifier(env_data, 'overcloud_storage_mgmt_router', args.id,
+                    default='storage_mgmt_router')
+    _add_identifier(env_data, 'overcloud_tenant_router', args.id,
+                    default='tenant_router')
+    _add_identifier(env_data, 'provision_router_name', args.id,
+                    default='provision_router')
+
     # We don't modify any resource_registry entries, and because we may be
     # writing the new env file to a different path it can break relative paths
     # in the resource_registry.

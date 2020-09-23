@@ -19,6 +19,11 @@ parameters:
       The base image for the dhcrelay instance.  A CentOS 7 image is currently
       the only one supported.
 
+  dhcrelay_prefix:
+    type: string
+    description: Prefix for the name of the dhcrelay instance
+    default: dhcrelay
+
   provision_net_cidr:
     type: string
     description: CIDR for provision network subnet
@@ -270,7 +275,7 @@ resources:
   dhcp_relay_server:
     type: OS::Nova::Server
     properties:
-      name: radvd-and-dhcrelay
+      name: {get_param: dhcrelay_prefix}
       flavor: {get_param: dhcp_relay_flavor}
       image: {get_param: dhcp_relay_image}
       key_name: {get_param: key_name}
