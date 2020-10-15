@@ -220,6 +220,7 @@ resources:
               net.ipv6.conf.eth1.forwarding = 1
               net.ipv6.conf.eth2.forwarding = 1
               net.ipv6.conf.eth3.forwarding = 1
+              net.ipv6.conf.all.forwarding = 1
           - - path: /etc/chrony.conf
               content:
                 str_replace:
