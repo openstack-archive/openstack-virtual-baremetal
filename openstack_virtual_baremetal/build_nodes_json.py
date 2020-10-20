@@ -16,6 +16,7 @@
 import argparse
 import json
 import os
+import re
 import yaml
 
 import os_client_config
@@ -66,6 +67,11 @@ def _parse_args():
                         action='store_true',
                         help='Set the physical network attribute of baremetal '
                              'ports. (Requires Rocky or later Ironic)')
+    parser.add_argument('--id',
+                        help='Identifier to remove from network resource '
+                             'names when setting physical network attribute '
+                             'of baremetal ports. (This should match the --id '
+                             'used with for the ovb-deploy command.)')
     args = parser.parse_args()
     return args
 
@@ -117,9 +123,9 @@ def _get_ports(neutron, bmc_base, baremetal_base):
 
 
 def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
-                 baremetal_base, undercloud_name, driver, physical_network):
+                 baremetal_base, undercloud_name, args):
     node_template = {
-        'pm_type': driver,
+        'pm_type': args.driver,
         'mac': '',
         'cpu': '',
         'memory': '',
@@ -131,7 +137,7 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
         'capabilities': 'boot_option:local',
         'name': '',
     }
-    if physical_network:
+    if args.physical_network:
         node_template.pop('mac')
     nodes = []
     cache = {}
@@ -145,9 +151,14 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
         node['pm_addr'] = bmc_port['fixed_ips'][0]['ip_address']
         provision_net = provision_net_map.get(baremetal_port['id'])
         mac = baremetal.addresses[provision_net][0]['OS-EXT-IPS-MAC:mac_addr']
-        if physical_network:
+        if args.physical_network:
+            if args.id:
+                physical_network = re.sub('-' + args.id + '$', '',
+                                          provision_net)
+            else:
+                physical_network = provision_net
             node.update({'ports': [{'address': mac,
-                                    'physical_network': provision_net}]})
+                                    'physical_network': physical_network}]})
         else:
             node['mac'] = [mac]
         if not cache.get(baremetal.flavor['id']):
@@ -268,8 +279,7 @@ def main():
      extra_nodes,
      network_details) = _build_nodes(nova, glance, bmc_ports, bm_ports,
                                      provision_net_map, baremetal_base,
-                                     undercloud_name, args.driver,
-                                     args.physical_network)
+                                     undercloud_name, args)
     _write_nodes(nodes, extra_nodes, network_details, args)
     _write_role_nodes(nodes, args)
 
