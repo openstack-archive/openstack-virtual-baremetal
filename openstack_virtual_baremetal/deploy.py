@@ -150,6 +150,9 @@ def _generate_id_env(args):
     role = env_data['parameter_defaults'].get('role')
     if role:
         _add_identifier(env_data, 'baremetal_prefix', role)
+    priv_network = env_data['parameter_defaults'].get('private_net_cidr')
+    if priv_network:
+        _add_identifier(env_data, 'private_net', args.id, default='private')
     _add_identifier(env_data, 'bmc_prefix', args.id, default='bmc')
     _add_identifier(env_data,
                     'undercloud_name',
