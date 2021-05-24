@@ -19,6 +19,10 @@ parameters:
     type: json
   external_net:
     type: string
+  config_drive:
+    type: boolean
+    default: false
+    description: If True, enable config drive on the server.
 
 resources:
   undercloud_ports:
@@ -38,6 +42,7 @@ resources:
       name: {get_param: undercloud_name}
       user_data_format: {get_param: undercloud_user_data_format}
       user_data: {get_param: undercloud_user_data}
+      config_drive: {get_param: config_drive}
 
   undercloud_floating_ip:
     type: OS::OVB::UndercloudFloating
