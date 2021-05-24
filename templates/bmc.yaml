@@ -93,6 +93,11 @@ parameters:
     type: number
     description: Number of baremetal nodes to deploy
 
+  config_drive:
+    type: boolean
+    default: false
+    description: If True, enable config drive on the server.
+
 resources:
   bmc_port:
     type: OS::OVB::BMCPort
@@ -132,6 +137,7 @@ resources:
       key_name: {get_param: key_name}
       networks: {get_attr: [bmc_port, port]}
       name: {get_param: bmc_prefix}
+      config_drive: {get_param: config_drive}
       user_data_format: RAW
       user_data:
         str_replace:
