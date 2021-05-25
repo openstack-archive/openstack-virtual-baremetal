@@ -33,6 +33,10 @@ parameter_defaults:
   # Type: string
   bmc_prefix: bmc
 
+  # If True, enable config drive on the server.
+  # Type: boolean
+  config_drive: False
+
   # An external network from which floating ips can be provisioned
   # Type: string
   external_net: external

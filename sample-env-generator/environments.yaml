@@ -3,6 +3,9 @@ environments:
     title: Base Configuration Options
     description: Basic configuration options needed for all OVB environments
     files:
+      templates/bmc.yaml:
+        parameters:
+          - config_drive
       templates/quintupleo.yaml:
         parameters:
           - bmc_flavor
