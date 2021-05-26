@@ -57,6 +57,9 @@ environments:
       should be used like a role file, but will deploy an undercloud-like
       node instead of more baremetal nodes.
     files:
+      templates/bmc.yaml:
+        parameters:
+          - config_drive
       templates/quintupleo.yaml:
         parameters:
           - baremetal_flavor
