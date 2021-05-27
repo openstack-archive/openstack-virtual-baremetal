@@ -60,6 +60,9 @@ environments:
       templates/bmc.yaml:
         parameters:
           - config_drive
+      templates/virtual-baremetal-servers.yaml:
+        parameters:
+          - baremetal_config_drive
       templates/quintupleo.yaml:
         parameters:
           - baremetal_flavor
@@ -73,12 +76,14 @@ environments:
       node_count: 1
     resource_registry:
       OS::OVB::BaremetalPorts: ../templates/baremetal-ports-extra-node.yaml
+      OS::OVB::BMC: OS::Heat::None
     children:
       -
         name: base-extra-node-all
         title: Base Configuration Options for Extra Nodes with All Ports Open
         resource_registry:
           OS::OVB::BaremetalPorts: ../templates/baremetal-ports-extra-node-all.yaml
+          OS::OVB::BMC: OS::Heat::None
   -
     name: all-networks
     title: Deploy with All Networks Enabled
