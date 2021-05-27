@@ -11,6 +11,10 @@
 #   should be used like a role file, but will deploy an undercloud-like
 #   node instead of more baremetal nodes.
 parameter_defaults:
+  # If True, enable config drive on baremetal instances.
+  # Type: boolean
+  baremetal_config_drive: False
+
   # Recommended to be at least 1 vcpu, 4 GB RAM, 50 GB disk
   # Type: string
   baremetal_flavor: baremetal
@@ -37,4 +41,5 @@ parameter_defaults:
   role: extra
 
 resource_registry:
+  OS::OVB::BMC: OS::Heat::None
   OS::OVB::BaremetalPorts: ../templates/baremetal-ports-extra-node.yaml

@@ -31,6 +31,11 @@ parameters:
   suffix:
     type: string
 
+  baremetal_config_drive:
+    type: boolean
+    default: false
+    description: If True, enable config drive on baremetal instances.
+
 resources:
 
   baremetal_ports:
@@ -56,7 +61,7 @@ resources:
     type: OS::Nova::Server
     properties:
       flavor: {get_param: baremetal_flavor}
-      config_drive: false
+      config_drive: {get_param: baremetal_config_drive}
       key_name: {get_param: key_name}
       networks: {get_attr: [baremetal_ports, ports]}
       block_device_mapping:
