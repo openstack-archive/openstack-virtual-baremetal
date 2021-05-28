@@ -200,12 +200,15 @@ class TestBuildNodesJson(testtools.TestCase):
         }
         neutron.list_ports.return_value = fake_ports
         neutron.list_subnets.return_value = fake_subnets
-        bmc_ports, bm_ports, provision_net_map = build_nodes_json._get_ports(
+
+        (bm_ports,
+         bmc_bm_port_pairs,
+         provision_net_map) = build_nodes_json._get_ports(
             neutron, 'bmc', 'baremetal')
-        self.assertEqual([fake_ports['ports'][2], fake_ports['ports'][1]],
-                         bmc_ports)
         self.assertEqual([fake_ports['ports'][4], fake_ports['ports'][3]],
                          bm_ports)
+        self.assertEqual([fake_ports['ports'][2], fake_ports['ports'][1]],
+                         [bmc_port for bmc_port, bm_port in bmc_bm_port_pairs])
         self.assertEqual({'baremetal_0_id': 'provision',
                           'baremetal_1_id': 'provision'}, provision_net_map)
 
@@ -246,10 +249,14 @@ class TestBuildNodesJson(testtools.TestCase):
         }
         neutron.list_ports.return_value = fake_ports
         neutron.list_subnets.return_value = fake_subnets
-        bmc_ports, bm_ports, provision_net_map = build_nodes_json._get_ports(
-            neutron, 'bmc-foo', 'baremetal-foo')
-        self.assertEqual([fake_ports['ports'][1]], bmc_ports)
+        (bm_ports,
+         bmc_bm_port_pairs,
+         provision_net_map) = build_nodes_json._get_ports(
+            neutron, '<bmc-foo', 'baremetal-foo')
         self.assertEqual([fake_ports['ports'][3]], bm_ports)
+        for bmc_port, bm_port in bmc_bm_port_pairs:
+            self.assertEqual([fake_ports['ports'][1]], bmc_port)
+            self.assertEqual([fake_ports['ports'][3]], bm_port)
 
     def _fake_port(self, device_id, ip, mac):
         return {'device_id': device_id,
@@ -278,6 +285,42 @@ class TestBuildNodesJson(testtools.TestCase):
         mock_flavor.ram = 145055
         mock_flavor.disk = 1024
         nova.flavors.get.return_value = mock_flavor
+
+    @mock.patch('os_client_config.make_client')
+    def test_build_network_details(self, mock_make_client):
+        bm_ports = [{'device_id': '1', 'id': 'port_id_server1'},
+                    {'device_id': '2', 'id': 'port_id_server2'}]
+        nova = mock.Mock()
+        servers = [mock.Mock(), mock.Mock(), mock.Mock()]
+        self._create_build_nodes_mocks(nova, servers)
+        servers[1].image = None
+        mock_to_dict = {'os-extended-volumes:volumes_attached':
+                        [{'id': 'v0lume'}]}
+        servers[1].to_dict.return_value = mock_to_dict
+        mock_cinder = mock.Mock()
+        mock_make_client.return_value = mock_cinder
+        mock_vol = mock.Mock()
+        mock_vol.size = 100
+        mock_cinder.volumes.get.return_value = mock_vol
+        servers[2].name = 'undercloud'
+        servers[2].flavor = {'id': '1'}
+        servers[2].addresses = {'provision': [{'OS-EXT-IPS-MAC:mac_addr':
+                                              'aa:aa:aa:aa:aa:ac'}]}
+        servers[2].image = {'id': 'f00'}
+        nova.servers.list.return_value = [servers[2]]
+        ips_return_val = 'ips call value'
+        nova.servers.ips.return_value = ips_return_val
+
+        (extra_nodes,
+         network_details) = build_nodes_json._build_network_details(
+            nova, bm_ports, 'undercloud')
+
+        self.assertEqual(1, len(extra_nodes))
+        self.assertEqual('undercloud', extra_nodes[0]['name'])
+        self.assertEqual(
+            '2.1.1.1', network_details['bm_0']['ips']['provision'][0]['addr'])
+        self.assertEqual(
+            '2.1.1.2', network_details['bm_1']['ips']['provision'][0]['addr'])
 
     @mock.patch('os_client_config.make_client')
     def test_build_nodes(self, mock_make_client):
@@ -317,20 +360,12 @@ class TestBuildNodesJson(testtools.TestCase):
 
         glance = mock.Mock()
 
-        (nodes,
-         extra_nodes,
-         network_details) = build_nodes_json._build_nodes(
-            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm',
-            'undercloud', args)
+        nodes = build_nodes_json._build_nodes(
+            nova, glance, zip(bmc_ports, bm_ports), provision_net_map, 'bm',
+            args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
         self.assertEqual(expected_nodes, nodes)
-        self.assertEqual(1, len(extra_nodes))
-        self.assertEqual('undercloud', extra_nodes[0]['name'])
-        self.assertEqual(
-            '2.1.1.1', network_details['bm_0']['ips']['provision'][0]['addr'])
-        self.assertEqual(
-            '2.1.1.2', network_details['bm_1']['ips']['provision'][0]['addr'])
 
     @mock.patch('os_client_config.make_client')
     def test_build_nodes_with_driver(self, mock_make_client):
@@ -370,22 +405,14 @@ class TestBuildNodesJson(testtools.TestCase):
 
         glance = mock.Mock()
 
-        (nodes,
-         extra_nodes,
-         network_details) = build_nodes_json._build_nodes(
-            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm',
-            'undercloud', args)
+        nodes = build_nodes_json._build_nodes(
+            nova, glance, zip(bmc_ports, bm_ports), provision_net_map, 'bm',
+            args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
         for node in expected_nodes:
             node['pm_type'] = 'ipmi'
         self.assertEqual(expected_nodes, nodes)
-        self.assertEqual(1, len(extra_nodes))
-        self.assertEqual('undercloud', extra_nodes[0]['name'])
-        self.assertEqual(
-            '2.1.1.1', network_details['bm_0']['ips']['provision'][0]['addr'])
-        self.assertEqual(
-            '2.1.1.2', network_details['bm_1']['ips']['provision'][0]['addr'])
 
     def test_build_nodes_role_uefi(self):
         args = mock.Mock()
@@ -415,9 +442,9 @@ class TestBuildNodesJson(testtools.TestCase):
         mock_image_get.get.return_value = 'uefi'
         glance.images.get.return_value = mock_image_get
 
-        nodes, extra_nodes, _ = build_nodes_json._build_nodes(
-            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm-foo',
-            None, args)
+        nodes = build_nodes_json._build_nodes(
+            nova, glance, zip(bmc_ports, bm_ports), provision_net_map,
+            'bm-foo', args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[0]['name'] = 'bm-foo-control-0'
         expected_nodes[0]['capabilities'] = ('boot_option:local,'
@@ -467,11 +494,9 @@ class TestBuildNodesJson(testtools.TestCase):
 
         glance = mock.Mock()
 
-        (nodes,
-         extra_nodes,
-         network_details) = build_nodes_json._build_nodes(
-            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm',
-            'undercloud', args)
+        nodes = build_nodes_json._build_nodes(
+            nova, glance, zip(bmc_ports, bm_ports), provision_net_map, 'bm',
+            args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
         del expected_nodes[0]['ports']
@@ -479,12 +504,6 @@ class TestBuildNodesJson(testtools.TestCase):
         expected_nodes[0]['mac'] = [TEST_NODES[0]['ports'][0]['address']]
         expected_nodes[1]['mac'] = [TEST_NODES[1]['ports'][0]['address']]
         self.assertEqual(expected_nodes, nodes)
-        self.assertEqual(1, len(extra_nodes))
-        self.assertEqual('undercloud', extra_nodes[0]['name'])
-        self.assertEqual(
-            '2.1.1.1', network_details['bm_0']['ips']['provision'][0]['addr'])
-        self.assertEqual(
-            '2.1.1.2', network_details['bm_1']['ips']['provision'][0]['addr'])
 
     @mock.patch('os_client_config.make_client')
     def test_build_nodes_with_physnet(self, mock_make_client):
@@ -524,22 +543,14 @@ class TestBuildNodesJson(testtools.TestCase):
 
         glance = mock.Mock()
 
-        (nodes,
-         extra_nodes,
-         network_details) = build_nodes_json._build_nodes(
-            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm',
-            'undercloud', args)
+        nodes = build_nodes_json._build_nodes(
+            nova, glance, zip(bmc_ports, bm_ports), provision_net_map, 'bm',
+            args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
         expected_nodes[0]['ports'][0]['physical_network'] = 'provision'
         expected_nodes[1]['ports'][0]['physical_network'] = 'provision'
         self.assertEqual(expected_nodes, nodes)
-        self.assertEqual(1, len(extra_nodes))
-        self.assertEqual('undercloud', extra_nodes[0]['name'])
-        self.assertEqual(
-            '2.1.1.1', network_details['bm_0']['ips']['provision'][0]['addr'])
-        self.assertEqual(
-            '2.1.1.2', network_details['bm_1']['ips']['provision'][0]['addr'])
 
     @mock.patch('os_client_config.make_client')
     def test_build_nodes_with_physnet_strip_id(self, mock_make_client):
@@ -580,24 +591,14 @@ class TestBuildNodesJson(testtools.TestCase):
 
         glance = mock.Mock()
 
-        (nodes,
-         extra_nodes,
-         network_details) = build_nodes_json._build_nodes(
-            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm',
-            'undercloud', args)
+        nodes = build_nodes_json._build_nodes(
+            nova, glance, zip(bmc_ports, bm_ports), provision_net_map, 'bm',
+            args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
         expected_nodes[0]['ports'][0]['physical_network'] = 'ctlplane'
         expected_nodes[1]['ports'][0]['physical_network'] = 'ctlplane'
         self.assertEqual(expected_nodes, nodes)
-        self.assertEqual(1, len(extra_nodes))
-        self.assertEqual('undercloud', extra_nodes[0]['name'])
-        self.assertEqual(
-            '2.1.1.1',
-            network_details['bm_0']['ips']['ctlplane-123'][0]['addr'])
-        self.assertEqual(
-            '2.1.1.2',
-            network_details['bm_1']['ips']['ctlplane-123'][0]['addr'])
 
     @mock.patch('openstack_virtual_baremetal.build_nodes_json.open',
                 create=True)
@@ -662,13 +663,15 @@ class TestBuildNodesJson(testtools.TestCase):
                 '_write_role_nodes')
     @mock.patch('openstack_virtual_baremetal.build_nodes_json._write_nodes')
     @mock.patch('openstack_virtual_baremetal.build_nodes_json._build_nodes')
+    @mock.patch('openstack_virtual_baremetal.build_nodes_json.'
+                '_build_network_details')
     @mock.patch('openstack_virtual_baremetal.build_nodes_json._get_ports')
     @mock.patch('openstack_virtual_baremetal.build_nodes_json._get_clients')
     @mock.patch('openstack_virtual_baremetal.build_nodes_json._get_names')
     @mock.patch('openstack_virtual_baremetal.build_nodes_json._parse_args')
     def test_main(self, mock_parse_args, mock_get_names, mock_get_clients,
-                  mock_get_ports, mock_build_nodes, mock_write_nodes,
-                  mock_write_role_nodes):
+                  mock_get_ports, mock_build_net_details, mock_build_nodes,
+                  mock_write_nodes, mock_write_role_nodes):
         args = mock.Mock()
         mock_parse_args.return_value = args
         bmc_base = mock.Mock()
@@ -681,13 +684,15 @@ class TestBuildNodesJson(testtools.TestCase):
         neutron = mock.Mock()
         glance = mock.Mock()
         mock_get_clients.return_value = (nova, neutron, glance)
-        bmc_ports = mock.Mock()
+        bmc_bm_port_pairs = mock.Mock()
         bm_ports = mock.Mock()
-        mock_get_ports.return_value = (bmc_ports, bm_ports, provision_net_map)
+        mock_get_ports.return_value = (bm_ports, bmc_bm_port_pairs,
+                                       provision_net_map)
         nodes = mock.Mock()
         extra_nodes = mock.Mock()
         network_details = mock.Mock()
-        mock_build_nodes.return_value = (nodes, extra_nodes, network_details)
+        mock_build_net_details.return_value = (extra_nodes, network_details)
+        mock_build_nodes.return_value = nodes
 
         build_nodes_json.main()
 
@@ -696,10 +701,12 @@ class TestBuildNodesJson(testtools.TestCase):
         mock_get_clients.assert_called_once_with()
         mock_get_ports.assert_called_once_with(neutron, bmc_base,
                                                baremetal_base)
-        mock_build_nodes.assert_called_once_with(nova, glance, bmc_ports,
-                                                 bm_ports, provision_net_map,
+        mock_build_net_details.assert_called_once_with(nova, bm_ports,
+                                                       undercloud_name)
+        mock_build_nodes.assert_called_once_with(nova, glance,
+                                                 bmc_bm_port_pairs,
+                                                 provision_net_map,
                                                  baremetal_base,
-                                                 undercloud_name,
                                                  args)
         mock_write_nodes.assert_called_once_with(nodes, extra_nodes,
                                                  network_details, args)

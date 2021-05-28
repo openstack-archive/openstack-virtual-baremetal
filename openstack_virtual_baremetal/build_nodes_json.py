@@ -109,13 +109,23 @@ def _get_clients():
 def _get_ports(neutron, bmc_base, baremetal_base):
     all_ports = sorted(neutron.list_ports()['ports'], key=lambda x: x['name'])
     bmc_ports = list([p for p in all_ports
-                     if p['name'].startswith(bmc_base)])
+                      if p['name'].startswith(bmc_base)])
     bm_ports = list([p for p in all_ports
-                    if p['name'].startswith(baremetal_base)])
-    if len(bmc_ports) != len(bm_ports):
+                     if p['name'].startswith(baremetal_base)])
+
+    # Filter the bm_ports without a matching bmc_port, when using roles
+    # one role can have bmc enabled, and other roles have it disabled.
+    valid_suffixes = [p['name'].split(bmc_base)[-1] for p in bmc_ports]
+    valid_bm_ports = [p for p in bm_ports
+                      if p['name'].split(baremetal_base)[-1] in valid_suffixes]
+
+    if len(bmc_ports) != len(valid_bm_ports):
         raise RuntimeError('Found different numbers of baremetal and '
                            'bmc ports. bmc: %s baremetal: %s' % (bmc_ports,
                                                                  bm_ports))
+
+    bmc_bm_port_pairs = zip(bmc_ports, valid_bm_ports)
+
     provision_net_map = {}
     for port in bm_ports:
         provision_net_map.update({
@@ -123,11 +133,49 @@ def _get_ports(neutron, bmc_base, baremetal_base):
                 neutron.list_subnets(
                     id=port['fixed_ips'][0]['subnet_id'])['subnets'][0].get(
                     'name')})
-    return bmc_ports, bm_ports, provision_net_map
+
+    return bm_ports, bmc_bm_port_pairs, provision_net_map
 
 
-def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
-                 baremetal_base, undercloud_name, args):
+def _build_network_details(nova, bm_ports, undercloud_name):
+    network_details = {}
+
+    for baremetal_port in bm_ports:
+        baremetal = nova.servers.get(baremetal_port['device_id'])
+        network_details[baremetal.name] = {}
+        network_details[baremetal.name]['id'] = baremetal.id
+        network_details[baremetal.name]['ips'] = baremetal.addresses
+
+    extra_nodes = []
+
+    if undercloud_name:
+        undercloud_node_template = {
+            'name': undercloud_name,
+            'id': '',
+            'ips': [],
+        }
+        try:
+            undercloud_instance = nova.servers.list(
+                search_opts={'name': undercloud_name})[0]
+        except IndexError:
+            print('Undercloud %s specified in the environment file is not '
+                  'available in nova. No undercloud details will be '
+                  'included in the output.' % undercloud_name)
+        else:
+            undercloud_node_template['id'] = undercloud_instance.id
+            undercloud_node_template['ips'] = nova.servers.ips(
+                undercloud_instance)
+
+            extra_nodes.append(undercloud_node_template)
+            network_details[undercloud_name] = dict(
+                id=undercloud_instance.id,
+                ips=undercloud_instance.addresses)
+
+    return extra_nodes, network_details
+
+
+def _build_nodes(nova, glance, bmc_bm_port_pairs, provision_net_map,
+                 baremetal_base, args):
     node_template = {
         'pm_type': args.driver,
         'cpu': '',
@@ -142,12 +190,8 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
     }
     nodes = []
     cache = {}
-    network_details = {}
-    for bmc_port, baremetal_port in zip(bmc_ports, bm_ports):
+    for bmc_port, baremetal_port in bmc_bm_port_pairs:
         baremetal = nova.servers.get(baremetal_port['device_id'])
-        network_details[baremetal.name] = {}
-        network_details[baremetal.name]['id'] = baremetal.id
-        network_details[baremetal.name]['ips'] = baremetal.addresses
         node = dict(node_template)
         node['pm_addr'] = bmc_port['fixed_ips'][0]['ip_address']
         provision_net = provision_net_map.get(baremetal_port['id'])
@@ -201,31 +245,7 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
 
         nodes.append(node)
 
-    extra_nodes = []
-
-    if undercloud_name:
-        undercloud_node_template = {
-            'name': undercloud_name,
-            'id': '',
-            'ips': [],
-        }
-        try:
-            undercloud_instance = nova.servers.list(
-                search_opts={'name': undercloud_name})[0]
-        except IndexError:
-            print('Undercloud %s specified in the environment file is not '
-                  'available in nova. No undercloud details will be '
-                  'included in the output.' % undercloud_name)
-        else:
-            undercloud_node_template['id'] = undercloud_instance.id
-            undercloud_node_template['ips'] = nova.servers.ips(
-                undercloud_instance)
-
-            extra_nodes.append(undercloud_node_template)
-            network_details[undercloud_name] = dict(
-                id=undercloud_instance.id,
-                ips=undercloud_instance.addresses)
-    return nodes, extra_nodes, network_details
+    return nodes
 
 
 def _write_nodes(nodes, extra_nodes, network_details, args):
@@ -274,13 +294,13 @@ def main():
     args = _parse_args()
     bmc_base, baremetal_base, undercloud_name = _get_names(args)
     nova, neutron, glance = _get_clients()
-    bmc_ports, bm_ports, provision_net_map = _get_ports(neutron, bmc_base,
-                                                        baremetal_base)
-    (nodes,
-     extra_nodes,
-     network_details) = _build_nodes(nova, glance, bmc_ports, bm_ports,
-                                     provision_net_map, baremetal_base,
-                                     undercloud_name, args)
+    (bm_ports,
+     bmc_bm_port_pairs,
+     provision_net_map) = _get_ports(neutron, bmc_base, baremetal_base)
+    (extra_nodes,
+     network_details) = _build_network_details(nova, bm_ports, undercloud_name)
+    nodes = _build_nodes(nova, glance, bmc_bm_port_pairs, provision_net_map,
+                         baremetal_base, args)
     _write_nodes(nodes, extra_nodes, network_details, args)
     _write_role_nodes(nodes, args)
 
