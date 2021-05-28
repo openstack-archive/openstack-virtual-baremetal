@@ -41,5 +41,4 @@ parameter_defaults:
   role: extra
 
 resource_registry:
-  OS::OVB::BMC: OS::Heat::None
   OS::OVB::BaremetalPorts: ../templates/baremetal-ports-extra-node-all.yaml
