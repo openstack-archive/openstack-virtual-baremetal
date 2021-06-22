@@ -27,7 +27,7 @@ TEST_NODES = [{'arch': 'x86_64',
                'capabilities': 'boot_option:local',
                'cpu': 128,
                'disk': 1024,
-               'mac': ['aa:aa:aa:aa:aa:aa'],
+               'ports': [{'address': 'aa:aa:aa:aa:aa:aa'}],
                'memory': 145055,
                'name': 'bm-0',
                'pm_addr': '1.1.1.1',
@@ -38,7 +38,7 @@ TEST_NODES = [{'arch': 'x86_64',
                'capabilities': 'boot_option:local',
                'cpu': 128,
                'disk': 1024,
-               'mac': ['aa:aa:aa:aa:aa:ab'],
+               'ports': [{'address': 'aa:aa:aa:aa:aa:ab'}],
                'memory': 145055,
                'name': 'bm-1',
                'pm_addr': '1.1.1.2',
@@ -53,7 +53,7 @@ class TestBuildNodesJson(testtools.TestCase):
                      'bmc-foo', '--baremetal_prefix', 'baremetal-foo',
                      '--provision_net', 'provision-foo', '--nodes_json',
                      'nodes-foo.json', '--driver', 'ipmi',
-                     '--physical_network',
+                     '--physical_network', '--use-mac'
                      ]
         with mock.patch.object(sys, 'argv', mock_argv):
             args = build_nodes_json._parse_args()
@@ -64,6 +64,7 @@ class TestBuildNodesJson(testtools.TestCase):
             self.assertEqual('nodes-foo.json', args.nodes_json)
             self.assertEqual('ipmi', args.driver)
             self.assertTrue(args.physical_network)
+            self.assertTrue(args.use_mac)
 
     def test_get_names_no_env(self):
         args = mock.Mock()
@@ -282,6 +283,7 @@ class TestBuildNodesJson(testtools.TestCase):
     def test_build_nodes(self, mock_make_client):
         args = mock.Mock()
         args.physical_network = False
+        args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = False
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
@@ -334,6 +336,7 @@ class TestBuildNodesJson(testtools.TestCase):
     def test_build_nodes_with_driver(self, mock_make_client):
         args = mock.Mock()
         args.physical_network = False
+        args.use_mac = False
         args.driver = 'ipmi'
         args.id = False
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
@@ -387,6 +390,7 @@ class TestBuildNodesJson(testtools.TestCase):
     def test_build_nodes_role_uefi(self):
         args = mock.Mock()
         args.physical_network = False
+        args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = False
 
@@ -426,9 +430,10 @@ class TestBuildNodesJson(testtools.TestCase):
         self.assertEqual(expected_nodes, nodes)
 
     @mock.patch('os_client_config.make_client')
-    def test_build_nodes_with_physnet(self, mock_make_client):
+    def test_build_nodes_use_mac(self, mock_make_client):
         args = mock.Mock()
-        args.physical_network = True
+        args.physical_network = False
+        args.use_mac = True
         args.driver = 'pxe_ipmitool'
         args.id = False
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
@@ -469,12 +474,65 @@ class TestBuildNodesJson(testtools.TestCase):
             'undercloud', args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
-        node0_mac = expected_nodes[0].pop('mac')
-        node1_mac = expected_nodes[1].pop('mac')
-        expected_nodes[0]['ports'] = [{'address': node0_mac[0],
-                                       'physical_network': 'provision'}]
-        expected_nodes[1]['ports'] = [{'address': node1_mac[0],
-                                       'physical_network': 'provision'}]
+        del expected_nodes[0]['ports']
+        del expected_nodes[1]['ports']
+        expected_nodes[0]['mac'] = [TEST_NODES[0]['ports'][0]['address']]
+        expected_nodes[1]['mac'] = [TEST_NODES[1]['ports'][0]['address']]
+        self.assertEqual(expected_nodes, nodes)
+        self.assertEqual(1, len(extra_nodes))
+        self.assertEqual('undercloud', extra_nodes[0]['name'])
+        self.assertEqual(
+            '2.1.1.1', network_details['bm_0']['ips']['provision'][0]['addr'])
+        self.assertEqual(
+            '2.1.1.2', network_details['bm_1']['ips']['provision'][0]['addr'])
+
+    @mock.patch('os_client_config.make_client')
+    def test_build_nodes_with_physnet(self, mock_make_client):
+        args = mock.Mock()
+        args.physical_network = True
+        args.use_mac = False
+        args.driver = 'pxe_ipmitool'
+        args.id = False
+        bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
+                     {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
+                     ]
+        bm_ports = [{'device_id': '1', 'id': 'port_id_server1'},
+                    {'device_id': '2', 'id': 'port_id_server2'}]
+        provision_net_map = {'port_id_server1': 'provision',
+                             'port_id_server2': 'provision',
+                             'port_id_server3': 'provision', }
+        nova = mock.Mock()
+        servers = [mock.Mock(), mock.Mock(), mock.Mock()]
+        self._create_build_nodes_mocks(nova, servers)
+        servers[1].image = None
+        mock_to_dict = {'os-extended-volumes:volumes_attached':
+                        [{'id': 'v0lume'}]}
+        servers[1].to_dict.return_value = mock_to_dict
+        mock_cinder = mock.Mock()
+        mock_make_client.return_value = mock_cinder
+        mock_vol = mock.Mock()
+        mock_vol.size = 100
+        mock_cinder.volumes.get.return_value = mock_vol
+        servers[2].name = 'undercloud'
+        servers[2].flavor = {'id': '1'}
+        servers[2].addresses = {'provision': [{'OS-EXT-IPS-MAC:mac_addr':
+                                              'aa:aa:aa:aa:aa:ac'}]}
+        servers[2].image = {'id': 'f00'}
+        nova.servers.list.return_value = [servers[2]]
+        ips_return_val = 'ips call value'
+        nova.servers.ips.return_value = ips_return_val
+
+        glance = mock.Mock()
+
+        (nodes,
+         extra_nodes,
+         network_details) = build_nodes_json._build_nodes(
+            nova, glance, bmc_ports, bm_ports, provision_net_map, 'bm',
+            'undercloud', args)
+        expected_nodes = copy.deepcopy(TEST_NODES)
+        expected_nodes[1]['disk'] = 100
+        expected_nodes[0]['ports'][0]['physical_network'] = 'provision'
+        expected_nodes[1]['ports'][0]['physical_network'] = 'provision'
         self.assertEqual(expected_nodes, nodes)
         self.assertEqual(1, len(extra_nodes))
         self.assertEqual('undercloud', extra_nodes[0]['name'])
@@ -487,6 +545,7 @@ class TestBuildNodesJson(testtools.TestCase):
     def test_build_nodes_with_physnet_strip_id(self, mock_make_client):
         args = mock.Mock()
         args.physical_network = True
+        args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = '123'
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
@@ -528,12 +587,8 @@ class TestBuildNodesJson(testtools.TestCase):
             'undercloud', args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
-        node0_mac = expected_nodes[0].pop('mac')
-        node1_mac = expected_nodes[1].pop('mac')
-        expected_nodes[0]['ports'] = [{'address': node0_mac[0],
-                                       'physical_network': 'ctlplane'}]
-        expected_nodes[1]['ports'] = [{'address': node1_mac[0],
-                                       'physical_network': 'ctlplane'}]
+        expected_nodes[0]['ports'][0]['physical_network'] = 'ctlplane'
+        expected_nodes[1]['ports'][0]['physical_network'] = 'ctlplane'
         self.assertEqual(expected_nodes, nodes)
         self.assertEqual(1, len(extra_nodes))
         self.assertEqual('undercloud', extra_nodes[0]['name'])

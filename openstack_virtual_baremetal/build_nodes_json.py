@@ -67,6 +67,10 @@ def _parse_args():
                         action='store_true',
                         help='Set the physical network attribute of baremetal '
                              'ports. (Requires Rocky or later Ironic)')
+    parser.add_argument('--use-mac',
+                        action='store_true',
+                        help='Use the deprecated "mac" field in nodes JSON '
+                             'instead of the "ports" field.')
     parser.add_argument('--id',
                         help='Identifier to remove from network resource '
                              'names when setting physical network attribute '
@@ -126,7 +130,6 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
                  baremetal_base, undercloud_name, args):
     node_template = {
         'pm_type': args.driver,
-        'mac': '',
         'cpu': '',
         'memory': '',
         'disk': '',
@@ -137,8 +140,6 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
         'capabilities': 'boot_option:local',
         'name': '',
     }
-    if args.physical_network:
-        node_template.pop('mac')
     nodes = []
     cache = {}
     network_details = {}
@@ -151,16 +152,16 @@ def _build_nodes(nova, glance, bmc_ports, bm_ports, provision_net_map,
         node['pm_addr'] = bmc_port['fixed_ips'][0]['ip_address']
         provision_net = provision_net_map.get(baremetal_port['id'])
         mac = baremetal.addresses[provision_net][0]['OS-EXT-IPS-MAC:mac_addr']
-        if args.physical_network:
-            if args.id:
-                physical_network = re.sub('-' + args.id + '$', '',
-                                          provision_net)
-            else:
-                physical_network = provision_net
-            node.update({'ports': [{'address': mac,
-                                    'physical_network': physical_network}]})
-        else:
+        if args.use_mac:
             node['mac'] = [mac]
+        else:
+            port = node.setdefault('ports', [{'address': mac}])[0]
+            if args.physical_network:
+                if args.id:
+                    port['physical_network'] = re.sub('-' + args.id + '$', '',
+                                                      provision_net)
+                else:
+                    port['physical_network'] = provision_net
         if not cache.get(baremetal.flavor['id']):
             cache[baremetal.flavor['id']] = nova.flavors.get(
                 baremetal.flavor['id'])
