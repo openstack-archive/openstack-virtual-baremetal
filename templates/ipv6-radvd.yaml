@@ -188,9 +188,9 @@ resources:
           - ['systemctl', 'enable', 'radvd.service']
           - ['systemctl', 'start', 'radvd.service']
           - ['systemctl', 'status', 'radvd.service']
-          - ['systemctl', 'enable', 'chronyd.servce']
-          - ['systemctl', 'start', 'chronyd.servce']
-          - ['systemctl', 'status', 'chronyd.servce']
+          - ['systemctl', 'enable', 'chronyd.service']
+          - ['systemctl', 'start', 'chronyd.service']
+          - ['systemctl', 'status', 'chronyd.service']
 
   radvd_init:
     type: OS::Heat::MultipartMime
