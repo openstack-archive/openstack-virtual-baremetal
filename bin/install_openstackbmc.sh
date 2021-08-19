@@ -199,10 +199,11 @@ sleep 5
 if ! systemctl is-active openstack-bmc-* >/dev/null
 then
     systemctl status openstack-bmc-*
+    set +x
     $signal_command --data-binary '{"status": "FAILURE"}'
     echo "********** $unit failed to start **********"
     exit 1
 fi
-
+set +x
 $signal_command --data-binary '{"status": "SUCCESS"}'
 
