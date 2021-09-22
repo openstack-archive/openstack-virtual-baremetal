@@ -24,7 +24,7 @@ from openstack_virtual_baremetal import build_nodes_json
 
 
 TEST_NODES = [{'arch': 'x86_64',
-               'capabilities': 'boot_option:local',
+               'capabilities': 'boot_option:local,boot_mode:bios',
                'cpu': 128,
                'disk': 1024,
                'ports': [{'address': 'aa:aa:aa:aa:aa:aa'}],
