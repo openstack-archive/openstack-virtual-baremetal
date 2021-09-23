@@ -228,6 +228,8 @@ def _build_nodes(nova, glance, bmc_bm_port_pairs, provision_net_map,
             image = cache.get(baremetal.image['id'])
             if image.get('hw_firmware_type') == 'uefi':
                 node['capabilities'] += ",boot_mode:uefi"
+            else:
+                node['capabilities'] += ",boot_mode:bios"
         else:
             # With boot from volume the flavor disk size doesn't matter.  We
             # need to look up the volume disk size.
