@@ -221,33 +221,33 @@ resources:
               net.ipv6.conf.eth2.forwarding = 1
               net.ipv6.conf.eth3.forwarding = 1
               net.ipv6.conf.all.forwarding = 1
-          - - path: /etc/chrony.conf
-              content:
-                str_replace:
-                  template: |
-                    pool $ntp_pool iburst
-                    # Record the rate at which the system clock gains/losses time.
-                    driftfile /var/lib/chrony/drift
-                    # Allow the system clock to be stepped in the first three updates
-                    # if its offset is larger than 1 second.
-                    makestep 1.0 3
-                    # Allow NTP client access from provision network.
-                    allow $provision_cidr
-                    allow $provision2_cidr
-                    allow $provision3_cidr
-                    # Serve time even if not synchronized to a time source.
-                    local stratum 10
-                    # Specify file containing keys for NTP authentication.
-                    keyfile /etc/chrony.keys
-                    # Get TAI-UTC offset and leap seconds from the system tz database.
-                    leapsectz right/UTC
-                    # Specify directory for log files.
-                    logdir /var/log/chrony
-                  params:
-                    $ntp_pool: {get_param: NtpPool}
-                    $provision_cidr: {get_param: provision_net_cidr}
-                    $provision2_cidr: {get_param: provision_net2_cidr}
-                    $provision3_cidr: {get_param: provision_net3_cidr}
+          - path: /etc/chrony.conf
+            content:
+              str_replace:
+                template: |
+                  pool $ntp_pool iburst
+                  # Record the rate at which the system clock gains/losses time.
+                  driftfile /var/lib/chrony/drift
+                  # Allow the system clock to be stepped in the first three updates
+                  # if its offset is larger than 1 second.
+                  makestep 1.0 3
+                  # Allow NTP client access from provision network.
+                  allow $provision_cidr
+                  allow $provision2_cidr
+                  allow $provision3_cidr
+                  # Serve time even if not synchronized to a time source.
+                  local stratum 10
+                  # Specify file containing keys for NTP authentication.
+                  keyfile /etc/chrony.keys
+                  # Get TAI-UTC offset and leap seconds from the system tz database.
+                  leapsectz right/UTC
+                  # Specify directory for log files.
+                  logdir /var/log/chrony
+                params:
+                  $ntp_pool: {get_param: NtpPool}
+                  $provision_cidr: {get_param: provision_net_cidr}
+                  $provision2_cidr: {get_param: provision_net2_cidr}
+                  $provision3_cidr: {get_param: provision_net3_cidr}
 
   init_runcmd:
     type: OS::Heat::CloudConfig
