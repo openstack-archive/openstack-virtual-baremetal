@@ -8,6 +8,11 @@ if [ "$centos_ver" == "7" ] ; then
     yum install -y python2-tripleo-repos
     tripleo-repos current-tripleo
     yum install -y python-crypto python2-novaclient python2-neutronclient python2-pyghmi os-net-config python2-os-client-config python2-openstackclient
+elif [ "$centos_ver" == "9" ] ; then
+    curl -o /etc/yum.repos.d/delorean.repo https://trunk.rdoproject.org/centos${centos_ver}-master/current-tripleo/delorean.repo
+    dnf install -y python3-tripleo-repos
+    tripleo-repos current-tripleo
+    dnf install -y openstack-network-scripts python3-cryptography python3-novaclient python3-pyghmi os-net-config python3-os-client-config python3-openstackclient
 else
     set +x
     $signal_command --data-binary '{"status": "FAILURE"}'
