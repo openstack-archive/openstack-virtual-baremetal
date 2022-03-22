@@ -4,12 +4,10 @@ set -x
 centos_ver=$(rpm --eval %{centos_ver})
 
 if [ "$centos_ver" == "7" ] ; then
-    yum install -y wget
-    wget -r --no-parent -nd -e robots=off -l 1 -A 'python2-tripleo-repos-*' https://trunk.rdoproject.org/centos7/current/
-    yum install -y python2-tripleo-repos-*
+    curl -o /etc/yum.repos.d/delorean.repo https://trunk.rdoproject.org/centos7/current/delorean.repo
+    yum install -y python2-tripleo-repos
     tripleo-repos current-tripleo
-    yum install -y python-crypto python2-novaclient python2-neutronclient python-pip os-net-config git jq python2-os-client-config python2-openstackclient
-    pip install pyghmi
+    yum install -y python-crypto python2-novaclient python2-neutronclient python2-pyghmi os-net-config python2-os-client-config python2-openstackclient
 else
     set +x
     $signal_command --data-binary '{"status": "FAILURE"}'
