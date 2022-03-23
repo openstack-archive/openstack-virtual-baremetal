@@ -1,25 +1,26 @@
 Preparing the Host Cloud Environment
 ====================================
 
-#. Build or download an ipxe-boot image for the baremetal instances.
+#. The ``ipxe`` directory contains tools for building an IPXE image which is used by the baremetal
+   instances to begin provisioning over the network.
 
-   #. To download a pre-built image::
+   To install the required build dependencies on a Fedora system::
 
-       wget https://repos.fedorapeople.org/repos/openstack-m/ovb/ipxe-boot.qcow2
+       sudo dnf install -y gcc xorriso make qemu-img syslinux-nonlinux xz-devel
 
-   #. To build the image, run the following from the root of the OVB repo::
+   It may be necessary to use the ``direct`` libguestfs backend::
+
+       export LIBGUESTFS_BACKEND=direct
+
+   To build the image, run the following from the root of the OVB repo::
 
        make -C ipxe
 
-      To install the required build dependencies on a Fedora system::
+#. Upload an ipxe-boot image for the baremetal instances, for both UEFI boot and
+   legacy BIOS boot::
 
-       sudo dnf install -y make gcc perl xz-devel genisoimage qemu-img
-
-#. Source an rc file that will provide admin credentials for the host cloud.
-
-#. Upload an ipxe-boot image for the baremetal instances::
-
-    glance image-create --name ipxe-boot --disk-format qcow2 --property os_shutdown_timeout=5 --container-format bare < ipxe/ipxe-boot.qcow2
+    openstack image create --progress --disk-format raw --property os_shutdown_timeout=5 --file ipxe/ipxe-boot.img ipxe-boot
+    openstack image create --progress --disk-format raw --property os_shutdown_timeout=5 --property hw_firmware_type=uefi --property hw_machine_type=q35 --file ipxe/ipxe-boot.img ipxe-boot-uefi
 
    .. note:: The path provided to ipxe-boot.qcow2 is relative to the root of
              the OVB repo.  If the command is run from a different working
@@ -27,10 +28,6 @@ Preparing the Host Cloud Environment
 
    .. note:: os_shutdown_timeout=5 is to avoid server shutdown delays since
              since these servers won't respond to graceful shutdown requests.
-
-   .. note:: On a UEFI enabled openstack cloud, to boot the baremetal instances
-             with uefi (instead of the default bios firmware) the image should
-             be created with the parameters --property="hw_firmware_type=uefi".
 
 #. Upload a CentOS 7 image for use as the base image::
 

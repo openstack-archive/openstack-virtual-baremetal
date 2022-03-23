@@ -4,17 +4,39 @@ IPXE_SRCDIR=ipxe/src
 
 # The specific image to use as the OVB iPXE boot image
 # Override this to use a different image (e.g. ipxe.hd)
-IPXE_IMG=ipxe.iso
+IPXE_IMG=bin/ipxe.iso
 
-ipxe_img_path=$(IPXE_SRCDIR)/bin/$(IPXE_IMG)
+IPXE_EFI=bin-x86_64-efi/ipxe.efi
 
-all: ipxe-boot.img ipxe-boot.qcow2
+ipxe_img_path=$(IPXE_SRCDIR)/$(IPXE_IMG)
+ipxe_efi_path=$(IPXE_SRCDIR)/$(IPXE_EFI)
 
-ipxe-boot.img: $(ipxe_img_path) script.ipxe
-	cp $< $@
+all: ipxe-boot.img
 
-ipxe-boot.qcow2: ipxe-boot.img
-	qemu-img convert -f raw -O qcow2 $< $@
+ipxe-boot.img: $(ipxe_img_path) efi.img
+	tmp_dir=$$(mktemp -d) && \
+	cp efi.img $$tmp_dir/efi.img && \
+	mkdir -p $$tmp_dir/boot/efi && \
+	xorriso -osirrox on -indev $(ipxe_img_path) -extract / $$tmp_dir && \
+	xorriso -as mkisofs \
+		-isohybrid-mbr /usr/share/syslinux/isohdpfx.bin \
+		-c boot.catalog \
+		-b isolinux.bin \
+		-no-emul-boot \
+		-boot-load-size 4 \
+		-boot-info-table \
+		-eltorito-alt-boot \
+		-e efi.img \
+		-no-emul-boot \
+		-isohybrid-gpt-basdat \
+		-o ipxe-boot.img \
+		$$tmp_dir
+
+efi.img: $(ipxe_efi_path)
+	tmp_dir=$$(mktemp -d) && \
+	mkdir -p $$tmp_dir/EFI/BOOT && \
+	cp $(ipxe_efi_path) $$tmp_dir/EFI/BOOT/BOOTX64.EFI && \
+	virt-make-fs --format=raw --type=fat $$tmp_dir efi.img
 
 # iPXE is configured by setting config macros in the source tree. The repo
 # contains a number of config headers in ipxe/src/config/*.h which contain
@@ -38,18 +60,27 @@ repo_config_path = $(IPXE_SRCDIR)/config/local
 repo_config_headers = $(foreach header,$(config_headers),$(repo_config_path)/$(header))
 
 # Copy individual repo_config_headers from ipxe-config/
-$(repo_config_path): ; mkdir $@
+$(repo_config_path): $(IPXE_SRCDIR)
+	mkdir -p $@
 $(repo_config_path)/%.h: ipxe-config/%.h | $(repo_config_path)
 	cp $< $@
+
+$(IPXE_SRCDIR):
+	git submodule init
+	git submodule update
 
 # We disable -Werror so we can build older commits with newer gcc
 # Don't use parallel make, as this races to initialise config headers in a
 # clean repo.
-$(ipxe_img_path): $(repo_config_headers)
-	$(MAKE) -C ipxe/src NO_WERROR=1 EMBED=../../script.ipxe bin/$(IPXE_IMG)
+$(ipxe_img_path): $(repo_config_headers) script.ipxe
+	$(MAKE) -C ipxe/src NO_WERROR=1 EMBED=../../script.ipxe $(IPXE_IMG)
+
+$(ipxe_efi_path): $(repo_config_headers) script.ipxe
+	$(MAKE) -C ipxe/src NO_WERROR=1 EMBED=../../script.ipxe $(IPXE_EFI)
 
 clean:
-	$(MAKE) -C ipxe/src clean
+	rm -rf ipxe
+	mkdir ipxe
 	rm -f ipxe-boot.img ipxe-boot.qcow2
 
 .PHONY: $(ipxe_img_path) clean
