@@ -1,40 +1,20 @@
 #!/bin/bash
 set -x
 
-# Also python-crypto, but that requires special handling because we used to
-# install python2-crypto from EPEL
-# python-[nova|neutron]client are in a similar situation.  They were renamed
-# in RDO to python2-*
-required_packages="python-pip os-net-config git jq python2-os-client-config python2-openstackclient"
+centos_ver=$(rpm --eval %{centos_ver})
 
-function have_packages() {
-    for i in $required_packages; do
-        if ! rpm -qa | grep -q $i; then
-            return 1
-        fi
-    done
-    if ! (rpm -qa | egrep -q "python-crypto|python2-crypto"); then
-        return 1
-    fi
-    if ! (rpm -qa | egrep -q "python-novaclient|python2-novaclient"); then
-        return 1
-    fi
-    if ! (rpm -qa | egrep -q "python-neutronclient|python2-neutronclient"); then
-        return 1
-    fi
-    if ! pip freeze | grep -q pyghmi; then
-        return 1
-    fi
-    return 0
-}
-
-if ! have_packages; then
+if [ "$centos_ver" == "7" ] ; then
     yum install -y wget
     wget -r --no-parent -nd -e robots=off -l 1 -A 'python2-tripleo-repos-*' https://trunk.rdoproject.org/centos7/current/
     yum install -y python2-tripleo-repos-*
     tripleo-repos current-tripleo
-    yum install -y $required_packages python-crypto python2-novaclient python2-neutronclient
+    yum install -y python-crypto python2-novaclient python2-neutronclient python-pip os-net-config git jq python2-os-client-config python2-openstackclient
     pip install pyghmi
+else
+    set +x
+    $signal_command --data-binary '{"status": "FAILURE"}'
+    echo "Unsupported CentOS version $centos_ver"
+    exit 1
 fi
 
 cat <<EOF >/usr/local/bin/openstackbmc
