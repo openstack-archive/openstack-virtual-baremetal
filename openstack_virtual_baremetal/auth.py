@@ -64,5 +64,10 @@ def _cloud_json():
 
     Retrieves the cloud from os-client-config and serializes it to JSON.
     """
-    config = os_client_config.OpenStackConfig().get_one_cloud(OS_CLOUD)
-    return json.dumps(config.config)
+
+    c = os_client_config.OpenStackConfig().get_one_cloud(OS_CLOUD)
+    minimal_config = {}
+    for k in ('auth', 'region_name', 'interface', 'identity_api_version'):
+        if k in c.config:
+            minimal_config[k] = c.config[k]
+    return json.dumps(minimal_config)
