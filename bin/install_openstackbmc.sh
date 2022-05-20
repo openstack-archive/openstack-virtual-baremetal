@@ -1,6 +1,12 @@
 #!/bin/bash
 set -x
 
+centos_ver=$(rpm --eval %{centos_ver})
+
+if [ "$centos_ver" == "7" ] ; then
+    yum install -y ca-certificates
+fi
+
 # Also python-crypto, but that requires special handling because we used to
 # install python2-crypto from EPEL
 # python-[nova|neutron]client are in a similar situation.  They were renamed
