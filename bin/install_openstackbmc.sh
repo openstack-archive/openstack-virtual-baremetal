@@ -5,7 +5,7 @@ centos_ver=$(rpm --eval %{centos_ver})
 
 if [ "$centos_ver" == "7" ] ; then
     curl -o /etc/yum.repos.d/delorean.repo https://trunk.rdoproject.org/centos7/current/delorean.repo
-    yum install -y python2-tripleo-repos
+    yum install -y python2-tripleo-repos ca-certificates
     tripleo-repos current-tripleo
     yum install -y python-crypto python2-novaclient python2-neutronclient python2-pyghmi os-net-config python2-os-client-config python2-openstackclient
 elif [ "$centos_ver" == "9" ] ; then
