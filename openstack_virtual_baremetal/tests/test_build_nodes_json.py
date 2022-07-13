@@ -329,6 +329,7 @@ class TestBuildNodesJson(testtools.TestCase):
         args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = False
+        args.interfaces = []
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
                      {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
                      ]
@@ -374,6 +375,7 @@ class TestBuildNodesJson(testtools.TestCase):
         args.use_mac = False
         args.driver = 'ipmi'
         args.id = False
+        args.interfaces = ['boot=pxe']
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
                      {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
                      ]
@@ -410,6 +412,8 @@ class TestBuildNodesJson(testtools.TestCase):
             args)
         expected_nodes = copy.deepcopy(TEST_NODES)
         expected_nodes[1]['disk'] = 100
+        expected_nodes[0]['boot_interface'] = 'pxe'
+        expected_nodes[1]['boot_interface'] = 'pxe'
         for node in expected_nodes:
             node['pm_type'] = 'ipmi'
         self.assertEqual(expected_nodes, nodes)
@@ -420,6 +424,7 @@ class TestBuildNodesJson(testtools.TestCase):
         args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = False
+        args.interfaces = []
 
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
                      {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
@@ -463,6 +468,7 @@ class TestBuildNodesJson(testtools.TestCase):
         args.use_mac = True
         args.driver = 'pxe_ipmitool'
         args.id = False
+        args.interfaces = []
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
                      {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
                      ]
@@ -512,6 +518,7 @@ class TestBuildNodesJson(testtools.TestCase):
         args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = False
+        args.interfaces = []
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
                      {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
                      ]
@@ -559,6 +566,7 @@ class TestBuildNodesJson(testtools.TestCase):
         args.use_mac = False
         args.driver = 'pxe_ipmitool'
         args.id = '123'
+        args.interfaces = []
         bmc_ports = [{'fixed_ips': [{'ip_address': '1.1.1.1'}]},
                      {'fixed_ips': [{'ip_address': '1.1.1.2'}]}
                      ]

@@ -21,6 +21,11 @@ import yaml
 
 import os_client_config
 
+_KNOWN_INTERFACE_NAMES = ('boot', 'console', 'deploy',
+                          'inspect', 'management', 'network',
+                          'power', 'raid', 'rescue', 'storage',
+                          'vendor')
+
 
 def _parse_args():
     parser = argparse.ArgumentParser(
@@ -63,6 +68,11 @@ def _parse_args():
                              'in a network_details key')
     parser.add_argument('--driver', default='ipmi',
                         help='Bare metal driver to use')
+    parser.add_argument('--interface',
+                        dest='interfaces',
+                        action='append',
+                        help='Interface driver to set, can be specified '
+                             'multiple times. For example boot=pxe')
     parser.add_argument('--physical_network',
                         action='store_true',
                         help='Set the physical network attribute of baremetal '
@@ -174,6 +184,27 @@ def _build_network_details(nova, bm_ports, undercloud_name):
     return extra_nodes, network_details
 
 
+def _parse_interfaces(interface_args):
+    if not interface_args:
+        return {}
+
+    interfaces = {}
+
+    for i_arg in interface_args:
+        try:
+            (i, v) = i_arg.split(('='), 1)
+        except ValueError:
+            raise RuntimeError('Malformed interface "%s". Use the key=value '
+                               'format.' % i_arg)
+
+        if i not in _KNOWN_INTERFACE_NAMES:
+            raise RuntimeError('Unknown interface "%s". Supported interfaces: '
+                               '%s' % (i, ', '.join(_KNOWN_INTERFACE_NAMES)))
+
+    interfaces['%s_interface' % i] = v
+    return interfaces
+
+
 def _build_nodes(nova, glance, bmc_bm_port_pairs, provision_net_map,
                  baremetal_base, args):
     node_template = {
@@ -190,6 +221,7 @@ def _build_nodes(nova, glance, bmc_bm_port_pairs, provision_net_map,
     }
     nodes = []
     cache = {}
+    node_template.update(_parse_interfaces(args.interfaces))
     for bmc_port, baremetal_port in bmc_bm_port_pairs:
         baremetal = nova.servers.get(baremetal_port['device_id'])
         node = dict(node_template)
