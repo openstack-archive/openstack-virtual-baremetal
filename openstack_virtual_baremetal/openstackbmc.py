@@ -189,18 +189,26 @@ def main():
         prog='openstackbmc',
         description='Virtual BMC for controlling OpenStack instance',
     )
+    parser.add_argument('--bmcuser',
+                        dest='bmcuser',
+                        default=os.environ.get('BMC_USER', 'admin'),
+                        help='Username to use for virtual BMC, defaults to admin')
+    parser.add_argument('--bmcpass',
+                        dest='bmcpass',
+                        default=os.environ.get('BMC_PASSWORD', 'password'),
+                        help='Password to use for virtual BMC, defaults to admin')
     parser.add_argument('--port',
                         dest='port',
                         type=int,
-                        default=623,
+                        default=os.environ.get('BMC_PORT', 623),
                         help='Port to listen on; defaults to 623')
     parser.add_argument('--address',
                         dest='address',
-                        default='::',
+                        default=os.environ.get('BMC_ADDRESS', '::'),
                         help='Address to bind to; defaults to ::')
     parser.add_argument('--instance',
                         dest='instance',
-                        required=True,
+                        default=os.environ.get('INSTANCE_ID'),
                         help='The uuid or name of the OpenStack instance '
                         'to manage')
     parser.add_argument('--cache-status',
@@ -222,7 +230,7 @@ def main():
     addr_format = '%s'
     if ':' not in args.address:
         addr_format = '::ffff:%s'
-    mybmc = OpenStackBmc({'admin': 'password'}, port=args.port,
+    mybmc = OpenStackBmc({ args.bmcuser: args.bmcpass }, port=args.port,
                          address=addr_format % args.address,
                          instance=args.instance,
                          cache_status=args.cache_status,
