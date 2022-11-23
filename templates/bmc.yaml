@@ -118,6 +118,7 @@ resources:
             - - {get_param: bmc_prefix}
               - _%index%
           network: {get_param: private_net}
+          port_security_enabled: false
 
   bmc_handle:
     type: OS::Heat::WaitConditionHandle
