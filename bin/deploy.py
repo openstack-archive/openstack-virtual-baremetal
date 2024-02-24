@@ -1,1 +1,0 @@
-../openstack_virtual_baremetal/deploy.py

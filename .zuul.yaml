@@ -1,6 +1,0 @@
-- project:
-    templates:
-      - openstack-python3-zed-jobs
-      - docs-on-readthedocs
-    vars:
-      rtd_webhook_id: '64851'

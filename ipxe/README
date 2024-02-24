@@ -1,7 +1,0 @@
-IPXE image-building tools
--------------------------
-
-This directory contains tools for for building an IPXE image. Documentation
-to build the image is found at:
-
-https://openstack-virtual-baremetal.readthedocs.io/en/latest/host-cloud/prepare.html
